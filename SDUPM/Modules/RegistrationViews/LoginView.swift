@@ -18,6 +18,12 @@ class LoginView: UIViewController {
         label.font = UIFont.systemFont(ofSize: 30, weight: .bold)
         return label
     }()
+    private let signUpSpinner: UIActivityIndicatorView = {
+        let spinner = UIActivityIndicatorView(style: .medium)
+        spinner.hidesWhenStopped = true
+        spinner.color = .white
+        return spinner
+    }()
     let passwordLabel: UILabel = {
         let label = UILabel()
         label.text = "Password"
@@ -64,7 +70,7 @@ class LoginView: UIViewController {
         
         view.backgroundColor = .white
         
-        [passwordLabel, passwordTextField, emailLabel, LogInButton, loginText, emailTextField].forEach({
+        [passwordLabel, passwordTextField, emailLabel, LogInButton, loginText, emailTextField, signUpSpinner].forEach({
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
         })
@@ -92,7 +98,10 @@ class LoginView: UIViewController {
             LogInButton.topAnchor.constraint(equalTo: passwordTextField.bottomAnchor, constant: 20),
             LogInButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             LogInButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            LogInButton.heightAnchor.constraint(equalToConstant: 56)
+            LogInButton.heightAnchor.constraint(equalToConstant: 56),
+            
+            signUpSpinner.centerXAnchor.constraint(equalTo: LogInButton.centerXAnchor),
+            signUpSpinner.centerYAnchor.constraint(equalTo: LogInButton.centerYAnchor),
         ])
     }
     
@@ -108,6 +117,7 @@ class LoginView: UIViewController {
     
     @objc func logInButtonTapped() {
         let loginAPI = LoginInViewModel()
+        showLoadingOnButton()
         loginAPI.sendUserData(email: emailTextField.text!, password: passwordTextField.text!) { responseString in
             DispatchQueue.main.async {
                 guard let response = responseString else { return }
@@ -115,8 +125,21 @@ class LoginView: UIViewController {
                     self.start()
                 }
                 self.showAlert(title: "Something went wrong!", message: response)
+                self.hideLoadingOnButton()
             }
         }
+    }
+    
+    func showLoadingOnButton() {
+        LogInButton.setTitle(nil, for: .normal)
+        signUpSpinner.startAnimating()
+        LogInButton.isUserInteractionEnabled = false
+    }
+
+    func hideLoadingOnButton() {
+        signUpSpinner.stopAnimating()
+        LogInButton.setTitle("Log In", for: .normal)
+        LogInButton.isUserInteractionEnabled = true
     }
     
     func showAlert(title: String, message: String) {

@@ -16,6 +16,8 @@ import UIKit
 
 class ProfileView: UIViewController {
     
+    private let presenter = ProfilePresenter()
+    
     private lazy var profileImage: UIImageView = {
         let image = UIImageView()
         image.contentMode = .scaleAspectFill
@@ -24,17 +26,21 @@ class ProfileView: UIViewController {
         image.layer.cornerRadius = 75
         return image
     }()
-    
+    private lazy var loadingIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView(style: .large)
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        indicator.hidesWhenStopped = true
+        indicator.color = .gray
+        return indicator
+    }()
     private lazy var fullNameLabel: UILabel = {
         let label = UILabel()
-        label.text = "Manas Salimzhan"
         label.font = UIFont.systemFont(ofSize: 30, weight: .medium)
         return label
     }()
     
     private lazy var phoneNumber: UILabel = {
         let label = UILabel()
-        label.text = "+7 706 844 0001"
         label.font = UIFont.systemFont(ofSize: 20, weight: .medium)
         return label
     }()
@@ -151,15 +157,20 @@ class ProfileView: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        presenter.view = self
+        fetchData()
     }
     
     private func setupUI() {
-        [profileImage, fullNameLabel, phoneNumber, editProfileButton, aboutButton, rateAppButton, shareAppButton, logoutButton, notificationsView, notificationsLabel, notificationsSwitch].forEach({
+        [profileImage, fullNameLabel, phoneNumber, editProfileButton, aboutButton, rateAppButton, shareAppButton, logoutButton, loadingIndicator, notificationsView, notificationsLabel, notificationsSwitch].forEach({
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
         })
         
         NSLayoutConstraint.activate([
+            
+            loadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            loadingIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             // Profile image
             profileImage.topAnchor.constraint(equalTo: view.topAnchor, constant: 100),
             profileImage.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -217,6 +228,15 @@ class ProfileView: UIViewController {
             logoutButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
         ])
     }
+    
+    private func fetchData() {
+        presenter.fetchProfile()
+    }
+    
+    func configure(model: UserProfile) {
+        fullNameLabel.text = "\(model.firstName) \(model.lastName)"
+        phoneNumber.text = model.phone
+    }
 
     @objc private func editProfileImage() {
         // Open image picker to change the profile image
@@ -227,6 +247,9 @@ class ProfileView: UIViewController {
     }
 
     @objc private func logout() {
+        UserDefaults.standard.removeObject(forKey: LoginView.isActive)
+        UserDefaults.standard.removeObject(forKey: LoginInViewModel.tokenIdentifier)
+        
         if let window = UIApplication.shared.keyWindow {
                 // Создаем новый корневой контроллер с экраном SignInView
                 let signInViewController = SignInView()
@@ -236,6 +259,27 @@ class ProfileView: UIViewController {
                 window.rootViewController = navigationController
                 window.makeKeyAndVisible()
             }
+    }
+    func showLoading() {
+        DispatchQueue.main.async {
+            [self.profileImage, self.fullNameLabel, self.phoneNumber, self.editProfileButton, self.aboutButton, self.rateAppButton, self.shareAppButton, self.logoutButton, self.loadingIndicator, self.notificationsView, self.notificationsLabel, self.notificationsSwitch].forEach { view in
+                view.isHidden = true
+            }
+            
+            self.loadingIndicator.startAnimating()
+            self.view.isUserInteractionEnabled = false
+        }
+    }
+
+    func hideLoading() {
+        DispatchQueue.main.async {
+            
+            [self.profileImage, self.fullNameLabel, self.phoneNumber, self.editProfileButton, self.aboutButton, self.rateAppButton, self.shareAppButton, self.logoutButton, self.loadingIndicator, self.notificationsView, self.notificationsLabel, self.notificationsSwitch].forEach { view in
+                view.isHidden = false
+            }
+            self.loadingIndicator.stopAnimating()
+            self.view.isUserInteractionEnabled = true
+        }
     }
     
     @objc private func toggleNotifications() {

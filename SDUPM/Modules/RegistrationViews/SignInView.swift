@@ -15,9 +15,16 @@ class SignInView: UIViewController, UITextFieldDelegate{
         label.font = UIFont.systemFont(ofSize: 30, weight: .bold)
         return label
     }()
-    let fullnameLabel: UILabel = {
+    let nameLabel: UILabel = {
         let label = UILabel()
-        label.text = "Fullname"
+        label.text = "Name"
+        label.textColor = .black
+        label.font = UIFont.systemFont(ofSize: 14, weight: .regular)
+        return label
+    }()
+    let surnameLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Surname"
         label.textColor = .black
         label.font = UIFont.systemFont(ofSize: 14, weight: .regular)
         return label
@@ -43,9 +50,15 @@ class SignInView: UIViewController, UITextFieldDelegate{
         label.font = UIFont.systemFont(ofSize: 14, weight: .regular)
         return label
     }()
-    let fullNameTextfield: UITextField = {
+    let nameTextField: UITextField = {
         let name = UITextField()
-        name.placeholder = "Your Name and Surname"
+        name.placeholder = "Your Name"
+        name.borderStyle = .roundedRect
+        return name
+    }()
+    let surnameTextField: UITextField = {
+        let name = UITextField()
+        name.placeholder = "Your Surname"
         name.borderStyle = .roundedRect
         return name
     }()
@@ -68,6 +81,12 @@ class SignInView: UIViewController, UITextFieldDelegate{
         phone.text = "+7"
         phone.borderStyle = .roundedRect
         return phone
+    }()
+    private let signUpSpinner: UIActivityIndicatorView = {
+        let spinner = UIActivityIndicatorView(style: .medium)
+        spinner.hidesWhenStopped = true
+        spinner.color = .white
+        return spinner
     }()
     let signUpButton: UIButton = {
         let button = UIButton()
@@ -106,27 +125,38 @@ class SignInView: UIViewController, UITextFieldDelegate{
     func setupUI() {
         view.backgroundColor = .systemBackground
         
-        [fullnameLabel, passwordLabel, passwordTextField,
+        [nameLabel, surnameLabel, passwordLabel, passwordTextField,
          emailLabel, phoneLabel, haveAccountButton,
-         loginButton, signUpButton, signUpText, fullNameTextfield,
+         loginButton, signUpButton, signUpText, nameTextField, surnameTextField,
          emailTextField, numberTextfield].forEach({
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
         })
         
+        signUpButton.addSubview(signUpSpinner)
+        signUpSpinner.translatesAutoresizingMaskIntoConstraints = false
+        
         NSLayoutConstraint.activate([
             signUpText.topAnchor.constraint(equalTo: view.topAnchor, constant: 75),
             signUpText.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             
-            fullnameLabel.topAnchor.constraint(equalTo: signUpText.bottomAnchor, constant: 40),
-            fullnameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            nameLabel.topAnchor.constraint(equalTo: signUpText.bottomAnchor, constant: 40),
+            nameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             
-            fullNameTextfield.topAnchor.constraint(equalTo: fullnameLabel.bottomAnchor, constant: 5),
-            fullNameTextfield.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            fullNameTextfield.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            fullNameTextfield.heightAnchor.constraint(equalToConstant: 56),
+            nameTextField.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 5),
+            nameTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            nameTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            nameTextField.heightAnchor.constraint(equalToConstant: 56),
             
-            emailLabel.topAnchor.constraint(equalTo: fullNameTextfield.bottomAnchor, constant: 10),
+            surnameLabel.topAnchor.constraint(equalTo: nameTextField.bottomAnchor, constant: 5),
+            surnameLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+            
+            surnameTextField.topAnchor.constraint(equalTo: surnameLabel.bottomAnchor, constant: 5),
+            surnameTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            surnameTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            surnameTextField.heightAnchor.constraint(equalToConstant: 56),
+            
+            emailLabel.topAnchor.constraint(equalTo: surnameTextField.bottomAnchor, constant: 10),
             emailLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             
             emailTextField.topAnchor.constraint(equalTo: emailLabel.bottomAnchor, constant: 5),
@@ -159,7 +189,10 @@ class SignInView: UIViewController, UITextFieldDelegate{
             haveAccountButton.leadingAnchor.constraint(equalTo: view.centerXAnchor, constant: -120),
             
             loginButton.topAnchor.constraint(equalTo: signUpButton.bottomAnchor, constant: 10),
-            loginButton.leadingAnchor.constraint(equalTo: haveAccountButton.trailingAnchor, constant: 10)
+            loginButton.leadingAnchor.constraint(equalTo: haveAccountButton.trailingAnchor, constant: 10),
+            
+            signUpSpinner.centerXAnchor.constraint(equalTo: signUpButton.centerXAnchor),
+            signUpSpinner.centerYAnchor.constraint(equalTo: signUpButton.centerYAnchor)
         ])
     }
     
@@ -175,8 +208,21 @@ class SignInView: UIViewController, UITextFieldDelegate{
         view.layer.add(animation, forKey: "position")
     }
     
+    func showLoadingOnButton() {
+        signUpButton.setTitle(nil, for: .normal)
+        signUpSpinner.startAnimating()
+        signUpButton.isUserInteractionEnabled = false
+    }
+
+    func hideLoadingOnButton() {
+        signUpSpinner.stopAnimating()
+        signUpButton.setTitle("Sign Up", for: .normal)
+        signUpButton.isUserInteractionEnabled = true
+    }
+    
     func setupTextfields() {
-        fullNameTextfield.delegate = self
+        nameTextField.delegate = self
+        surnameTextField.delegate = self
         numberTextfield.delegate = self
         numberTextfield.keyboardType = .phonePad
         passwordTextField.delegate = self
@@ -201,54 +247,32 @@ class SignInView: UIViewController, UITextFieldDelegate{
     @objc func SignUpButtonTapped() {
         let apiSender = SignInViewModel()
         
-        guard let fullname = fullNameTextfield.text , fullname.isEmpty == false else { return }
+        guard let name = nameTextField.text, name.isEmpty == false else { return }
+        guard let surname = surnameTextField.text, surname.isEmpty == false else { return }
         guard let email = emailTextField.text , email.isEmpty == false else { return }
         guard let password = passwordTextField.text , password.isEmpty == false else { return }
         guard let phoneNumber = numberTextfield.text , phoneNumber.isEmpty == false else { return }
+        self.showLoadingOnButton()
         
-        apiSender.sendUserData(fullname: fullname, email: email, password: password, phoneNumber: phoneNumber) { responseString in
+        apiSender.sendUserData(name: name, surname: surname, email: email, password: password, phoneNumber: phoneNumber) { responseString in
             DispatchQueue.main.async {
                 guard let response = responseString else { return }
-                if response == "Success" { self.navigationController?.pushViewController(LoginView(), animated: true) }
-                if response.contains("fullname") {
-                    self.fullNameTextfield.text = ""
-                    self.shake(self.fullNameTextfield)
-                } else if response.contains("password") {
-                    self.passwordTextField.text = ""
-                    self.shake(self.passwordTextField)
-                } else if response.contains("email") {
-                    self.emailTextField.text = ""
-                    self.shake(self.emailTextField)
-                } else if response.contains("phoneNumber") {
-                    self.numberTextfield.text = ""
-                    self.shake(self.numberTextfield)
+                if response == "Success" {
+                    let confirmVC = ConfirmEmailViewController(email: email)
+                        confirmVC.modalPresentationStyle = .pageSheet
+
+                        if let sheet = confirmVC.sheetPresentationController {
+                            sheet.detents = [.custom { _ in
+                                return UIScreen.main.bounds.height * 0.20
+                            }]
+                            sheet.prefersGrabberVisible = true
+                            sheet.prefersScrollingExpandsWhenScrolledToEdge = false
+                            sheet.preferredCornerRadius = 24
+                        }
+                        self.present(confirmVC, animated: true, completion: nil)
+                    self.hideLoadingOnButton()
                 }
             }
         }
     }
-    
-    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-        if textField == numberTextfield {
-            // Logic specific to the phone number text field
-            let currentText = textField.text ?? ""
-            let newText = (currentText as NSString).replacingCharacters(in: range, with: string)
-            
-            // Ensure "+7" is the prefix and can't be deleted
-            if newText.count < 2 {
-                return false // Prevent deleting the prefix
-            }
-            
-            // Ensure the first characters are always "+7"
-            if !newText.hasPrefix("+7") {
-                textField.text = "+7"
-                return false
-            }
-
-            return true
-        }
-        
-        // For other text fields, allow normal behavior
-        return true
-    }
-
 }

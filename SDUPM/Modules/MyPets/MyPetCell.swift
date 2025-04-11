@@ -55,10 +55,35 @@ class MyPetCell: UITableViewCell {
         didSet {
             nameLabel.text = item?.name
             breedLabel.text = item?.breed
-            categoryLabel.text = item?.category
-            ageLabel.text = item?.age
-            genderLabel.text = item?.gender
-            statusLabel.text = item!.status ? "Lost" : "Save"
+            categoryLabel.text = item?.species
+            genderLabel.text = "\(item?.lostDate)"
+            statusLabel.text = item?.status
+            setupView()
         }
+    }
+    
+    private func setupView() {
+        
+        addSubview(petImageView)
+        petImageView.snp.makeConstraints { make in
+            make.top.equalToSuperview().offset(8)
+            make.leading.equalToSuperview().inset(8)
+            make.bottom.equalToSuperview().offset(-8)
+            make.height.equalTo(60)
+            make.width.equalTo(100)
+        }
+        
+        addSubview(nameLabel)
+        nameLabel.snp.makeConstraints { make in
+            make.top.equalToSuperview().offset(8)
+            make.leading.equalTo(petImageView.snp.trailing).offset(5)
+        }
+        
+        addSubview(genderLabel)
+        genderLabel.snp.makeConstraints { make in
+            make.top.equalTo(nameLabel.snp.bottom).offset(5)
+            make.leading.equalTo(nameLabel)
+        }
+        
     }
 }

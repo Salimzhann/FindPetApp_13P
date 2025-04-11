@@ -5,7 +5,7 @@ class LosePetsCell: UICollectionViewCell {
     
     static let identifier: String = "LosePetsCell"
 
-    private let imageView: UIImageView = {
+    private let petImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
@@ -31,60 +31,48 @@ class LosePetsCell: UICollectionViewCell {
         return label
     }()
 
-    var item: LosePetsModel = LosePetsModel(id: 0, image: "", name: "", species: "", breed: "", age: "", sex: "") {
+    var item: LostPet? {
         didSet {
-            loadImage(from: item.image, into: imageView)
-            infoLabel.text = "\(item.name), \(item.age) лет"
-            breedLabel.text = "\(item.species): \(item.breed)"
-            sexLabel.text = item.sex
+            loadImage(from: item?.imageUrl ?? "", into: petImageView)
+            infoLabel.text = "\(item?.name), \(item?.age) лет"
+            breedLabel.text = "\(item?.species)"
+            sexLabel.text = item?.gender
         }
-    }
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        setupView()
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
     }
 
     override func prepareForReuse() {
         super.prepareForReuse()
-        imageView.image = nil
+        petImageView.image = nil
         infoLabel.text = nil
         breedLabel.text = nil
     }
 
     private func setupView() {
-        backgroundColor = UIColor.systemGray6
-        self.layer.cornerRadius = 5
-        self.layer.borderWidth = 0.4
-        self.layer.borderColor = UIColor.black.cgColor
+        backgroundColor = UIColor(red: 0.8, green: 1.0, blue: 0.8, alpha: 1.0)
+        self.layer.cornerRadius = 12
         
-        addSubview(imageView)
-        imageView.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(15)
-            make.leading.trailing.equalToSuperview().inset(10)
+        addSubview(petImageView)
+        petImageView.snp.makeConstraints { make in
+            make.top.leading.bottom.equalToSuperview().inset(10)
+            make.width.equalTo(130)
         }
         
         addSubview(infoLabel)
         infoLabel.snp.makeConstraints { make in
-            make.top.equalTo(imageView.snp.bottom).offset(10)
-            make.leading.equalToSuperview().inset(10)
+            make.top.equalToSuperview().offset(10)
+            make.leading.equalTo(petImageView.snp.trailing).offset(10)
         }
         
         addSubview(breedLabel)
         breedLabel.snp.makeConstraints { make in
-            make.top.equalTo(infoLabel.snp.bottom).offset(2)
-            make.leading.equalToSuperview().inset(10)
+            make.top.equalTo(infoLabel.snp.bottom).offset(5)
+            make.leading.equalTo(infoLabel)
         }
         
         addSubview(sexLabel)
         sexLabel.snp.makeConstraints { make in
-            make.top.equalTo(breedLabel.snp.bottom).offset(2)
-            make.leading.equalToSuperview().inset(10)
-            make.bottom.equalToSuperview().offset(-5)
+            make.top.equalTo(breedLabel.snp.bottom).offset(5)
+            make.leading.equalTo(breedLabel)
         }
     }
 

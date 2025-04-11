@@ -15,12 +15,16 @@ class MyPetPresenter {
     
     func fetchData() {
         view?.showLoading()
-        provider.takeMyPets { [weak self] data in
-            guard let data = data else { return }
-            self?.view?.myPetsArray = data
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            self.view?.hideLoading()
+        provider.fetchUserPets { [weak self] data in
+            if let data = data {
+                print("good thing")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    self?.view?.myPetsArray = data
+                    self?.view?.hideLoading()
+                }
+            } else {
+                print("False thing")
+            }
         }
     }
     

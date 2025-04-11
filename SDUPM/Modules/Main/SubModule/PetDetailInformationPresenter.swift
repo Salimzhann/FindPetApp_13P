@@ -25,7 +25,16 @@ class PetDetailInformationPresenter: IPetDetailInformationPresenter {
     }
     
     func callTaped(number: String) {
-        if let url = URL(string: "tel://\(number)") {
+        
+        let cleanedNumber = number
+                .replacingOccurrences(of: " ", with: "")
+                .replacingOccurrences(of: "(", with: "")
+                .replacingOccurrences(of: ")", with: "")
+            
+            // Кодируем "+" для URL
+            let encodedNumber = cleanedNumber.replacingOccurrences(of: "+", with: "%2B")
+        
+        if let url = URL(string: "tel://\(encodedNumber)") {
             if UIApplication.shared.canOpenURL(url) {
                 UIApplication.shared.open(url)
             } else {

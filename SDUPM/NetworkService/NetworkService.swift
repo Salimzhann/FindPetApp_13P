@@ -16,47 +16,107 @@ class NetworkServiceProvider {
     
     let api: String = NetworkService.api
     
-    func takeMyPets(completion: @escaping ([MyPetModel]?) -> Void) {
-        
-//        let urlString = "https://your-api.com/user/pets"
-//        guard let url = URL(string: urlString) else {
-//            completion(nil)
-//            return
-//        }
-//
-//        var request = URLRequest(url: url)
-//        request.httpMethod = "GET"
-//        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-//
-//        // Если нужен токен авторизации, добавь:
-//        // request.setValue("Bearer YOUR_ACCESS_TOKEN", forHTTPHeaderField: "Authorization")
-//
-//        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-//            if let error = error {
-//                print("Ошибка при загрузке данных: \(error.localizedDescription)")
-//                completion(nil)
-//                return
-//            }
-//
-//            guard let data = data else {
-//                completion(nil)
-//                return
-//            }
-//
-//            do {
-//                let pets = try JSONDecoder().decode([MyPetModel].self, from: data)
-//                self.view.activityIndicator.stopAnimating()
-//
-//                completion(pets)
-//            } catch {
-//                print("Ошибка при декодировании JSON: \(error.localizedDescription)")
-//                completion(nil)
-//            }
-//        }
-//
-//        task.resume()
-        completion(nil)
+    
+    func fetchUserPets(completion: @escaping ([MyPetModel]?) -> Void) {
+        guard let url = URL(string: "https://petradar.up.railway.app/users/me/pets") else {
+            print("Неверный URL")
+            completion(nil)
+            return
+        }
+
+        guard let token = UserDefaults.standard.string(forKey: LoginInViewModel.tokenIdentifier) else {
+            print("Токен не найден")
+            completion(nil)
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("Ошибка: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else {
+                print("Ошибка HTTP ответа")
+                completion(nil)
+                return
+            }
+
+            guard let data = data else {
+                print("Нет данных")
+                completion(nil)
+                return
+            }
+
+            do {
+                let pets = try JSONDecoder().decode([MyPetModel].self, from: data)
+                completion(pets)
+            } catch {
+                print("Ошибка декодирования: \(error)")
+                completion(nil)
+            }
+        }
+        task.resume()
     }
+    
+    func fetchUserProfile(completion: @escaping (UserProfile?) -> Void) {
+        guard let url = URL(string: "https://petradar.up.railway.app/users/me") else {
+            print("Invalid URL")
+            completion(nil)
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        
+        // Получаем токен из UserDefaults
+        guard let token = UserDefaults.standard.string(forKey: LoginInViewModel.tokenIdentifier) else {
+            print("No token found")
+            completion(nil)
+            return
+        }
+        
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("Error: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                print("Status Code: \(httpResponse.statusCode)")
+                
+                if let data = data, httpResponse.statusCode == 200 {
+                    do {
+                        // Декодируем ответ в UserProfile
+                        let decoder = JSONDecoder()
+                        let userProfile = try decoder.decode(UserProfile.self, from: data)
+                        completion(userProfile)
+                    } catch {
+                        print("Failed to decode JSON: \(error.localizedDescription)")
+                        completion(nil)
+                    }
+                } else {
+                    let errorString = String(data: data ?? Data(), encoding: .utf8) ?? "Unknown error"
+                    print("Server error: \(errorString)")
+                    completion(nil)
+                }
+            }
+        }
+        
+        task.resume()
+    }
+
+
     
     func uploadPetData(name: String, age: String, breed: String, category: String, isLost: Bool, images: [UIImage], completion: @escaping (_ success: Bool) -> Void) {
 //        guard let url = URL(string: "https://example.com/api/pets") else { return }
@@ -141,7 +201,7 @@ class NetworkServiceProvider {
         task.resume()
     }
     
-    func receivePetsList(completion: @escaping ([LosePetsModel]) -> Void) {
+    func receivePetsList(completion: @escaping ([LostPetResponse]) -> Void) {
             guard let url = URL(string: "https://example.com/api/pets") else {
                 print("❌ Invalid URL")
                 completion([])
@@ -162,7 +222,7 @@ class NetworkServiceProvider {
                 }
 
                 do {
-                    let decodedData = try JSONDecoder().decode([LosePetsModel].self, from: data)
+                    let decodedData = try JSONDecoder().decode([LostPetResponse].self, from: data)
                     DispatchQueue.main.async {
                         completion(decodedData)
                     }
@@ -174,4 +234,49 @@ class NetworkServiceProvider {
 
             task.resume()
         }
+
+    func fetchLostPets(page: Int = 5, limit: Int = 100) {
+        var urlComponents = URLComponents(string: "https://petradar.up.railway.app/pets/lost")!
+        urlComponents.queryItems = [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "limit", value: String(limit))
+        ]
+        
+        guard let url = urlComponents.url else {
+            print("Невозможно сформировать URL")
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("Ошибка запроса: \(error.localizedDescription)")
+                return
+            }
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else {
+                print("Ошибка ответа от сервера")
+                return
+            }
+
+            guard let data = data else {
+                print("Нет данных")
+                return
+            }
+
+            do {
+                let decoder = JSONDecoder()
+                let result = try decoder.decode(LostPetResponse.self, from: data)
+                print("✅ Успешно: \(result.items)")
+            } catch {
+                print("❌ Ошибка декодирования: \(error)")
+            }
+        }
+
+        task.resume()
+    }
+
 }

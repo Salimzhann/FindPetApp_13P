@@ -19,7 +19,7 @@ class MainPresenter {
         view?.navigationController?.pushViewController(vc, animated: true)
     }
     
-    func receiveData(completion: @escaping ([LosePetsModel]) -> Void) {
-        provider.receivePetsList(completion: completion)
+    func receiveData(completion: @escaping ([LostPet]) -> Void) {
+        provider.fetchLostPets()
     }
 }

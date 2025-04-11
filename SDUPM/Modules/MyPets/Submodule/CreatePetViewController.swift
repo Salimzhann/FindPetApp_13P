@@ -6,8 +6,10 @@
 //
 
 import UIKit
+import PhotosUI
 
-class CreatePetViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+
+class CreatePetViewController: UIViewController, UITextViewDelegate {
     
     private var selectedImages: [UIImage] = []
     private let presenter = CreatePetViewPresenter()
@@ -22,6 +24,17 @@ class CreatePetViewController: UIViewController, UIImagePickerControllerDelegate
         collectionView.showsHorizontalScrollIndicator = false
         return collectionView
     }()
+    private let backButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        button.tintColor = .systemGray4
+        button.imageView?.contentMode = .scaleAspectFill
+        button.imageView?.snp.makeConstraints { make in
+            make.size.equalTo(30)
+        }
+        button.addTarget(self, action: #selector(backButtonTapped), for: .touchUpInside)
+        return button
+    }()
     private let uploadPhotoButton: UIButton = {
         let button = UIButton(type: .system)
         button.setTitle("Upload Photo", for: .normal)
@@ -30,13 +43,29 @@ class CreatePetViewController: UIViewController, UIImagePickerControllerDelegate
         button.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18)
         button.backgroundColor = .systemGray4
         button.setTitleColor(.white, for: .normal)
-//        button.layer.cornerRadius = 12
         return button
     }()
+    
     private let nameTextField = CreatePetViewController.createTextField(placeholder: "Pet Name")
-    private let ageTextField = CreatePetViewController.createTextField(placeholder: "Age", keyboardType: .numberPad)
-    private let breedTextField = CreatePetViewController.createTextField(placeholder: "Breed")
     private let categoryTextField = CreatePetViewController.createTextField(placeholder: "Category (Dog, Cat)")
+    private let ageTextField = CreatePetViewController.createTextField(placeholder: "Age", keyboardType: .decimalPad)
+    private let breedTextField = CreatePetViewController.createTextField(placeholder: "Breed")
+    private let colorTextField = CreatePetViewController.createTextField(placeholder: "Color")
+    private let genderTextField = CreatePetViewController.createTextField(placeholder: "Gender")
+    private let descriptionTextView: UITextView = {
+        let textView = UITextView()
+        textView.text = "Description"
+        textView.textColor = .lightGray
+        textView.font = UIFont.systemFont(ofSize: 16)
+        textView.layer.cornerRadius = 8
+        textView.layer.borderWidth = 1
+        textView.layer.borderColor = UIColor.systemGray5.cgColor
+        textView.keyboardType = .default
+        textView.returnKeyType = .done
+        textView.isScrollEnabled = true
+        return textView
+    }()
+    
     var onPetAdded: (() -> Void)?
     
     private let statusSegmentedControl: UISegmentedControl = {
@@ -61,13 +90,20 @@ class CreatePetViewController: UIViewController, UIImagePickerControllerDelegate
         setupViews()
         setupActions()
         setupCollectionView()
+        descriptionTextView.delegate = self
     }
     
     private func setupViews() {
+        view.addSubview(backButton)
+        backButton.snp.makeConstraints { make in
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(20)
+            make.trailing.equalToSuperview().inset(20)
+            make.size.equalTo(30)
+        }
         
         view.addSubview(uploadPhotoButton)
         uploadPhotoButton.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(20)
+            make.top.equalTo(backButton.snp.bottom).offset(20)
             make.leading.equalToSuperview().inset(20)
             make.width.equalTo(100)
             make.height.equalTo(100)
@@ -75,7 +111,7 @@ class CreatePetViewController: UIViewController, UIImagePickerControllerDelegate
         
         view.addSubview(photoCollectionView)
         photoCollectionView.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(20)
+            make.top.equalTo(backButton.snp.bottom).offset(20)
             make.leading.equalTo(uploadPhotoButton.snp.trailing).offset(10)
             make.trailing.equalToSuperview().inset(20)
             make.height.equalTo(100)
@@ -88,8 +124,8 @@ class CreatePetViewController: UIViewController, UIImagePickerControllerDelegate
             make.height.equalTo(30)
         }
         
-        view.addSubview(ageTextField)
-        ageTextField.snp.makeConstraints { make in
+        view.addSubview(categoryTextField)
+        categoryTextField.snp.makeConstraints { make in
             make.top.equalTo(nameTextField.snp.bottom).offset(10)
             make.leading.trailing.equalToSuperview().inset(20)
             make.height.equalTo(30)
@@ -97,21 +133,42 @@ class CreatePetViewController: UIViewController, UIImagePickerControllerDelegate
         
         view.addSubview(breedTextField)
         breedTextField.snp.makeConstraints { make in
-            make.top.equalTo(ageTextField.snp.bottom).offset(10)
+            make.top.equalTo(categoryTextField.snp.bottom).offset(10)
             make.leading.trailing.equalToSuperview().inset(20)
             make.height.equalTo(30)
         }
         
-        view.addSubview(categoryTextField)
-        categoryTextField.snp.makeConstraints { make in
+        view.addSubview(ageTextField)
+        ageTextField.snp.makeConstraints { make in
             make.top.equalTo(breedTextField.snp.bottom).offset(10)
             make.leading.trailing.equalToSuperview().inset(20)
             make.height.equalTo(30)
         }
         
+        view.addSubview(colorTextField)
+        colorTextField.snp.makeConstraints { make in
+            make.top.equalTo(ageTextField.snp.bottom).offset(10)
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(30)
+        }
+        
+        view.addSubview(genderTextField)
+        genderTextField.snp.makeConstraints { make in
+            make.top.equalTo(colorTextField.snp.bottom).offset(10)
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(30)
+        }
+        
+        view.addSubview(descriptionTextView)
+        descriptionTextView.snp.makeConstraints { make in
+            make.top.equalTo(genderTextField.snp.bottom).offset(10)
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(90)
+        }
+        
         view.addSubview(statusSegmentedControl)
         statusSegmentedControl.snp.makeConstraints { make in
-            make.top.equalTo(categoryTextField.snp.bottom).offset(10)
+            make.top.equalTo(descriptionTextView.snp.bottom).offset(10)
             make.centerX.equalToSuperview()
             make.width.equalTo(250)
         }
@@ -130,18 +187,13 @@ class CreatePetViewController: UIViewController, UIImagePickerControllerDelegate
     }
     
     @objc private func uploadPhotoTapped() {
-        let imagePicker = UIImagePickerController()
-        imagePicker.delegate = self
-        imagePicker.sourceType = .photoLibrary
-        present(imagePicker, animated: true)
-    }
-    
-    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        if let selectedImage = info[.originalImage] as? UIImage, selectedImages.count < 5 {
-            selectedImages.append(selectedImage)
-            photoCollectionView.reloadData()
-        }
-        dismiss(animated: true)
+        var configuration = PHPickerConfiguration()
+        configuration.selectionLimit = 5 // Максимум 5 изображений
+        configuration.filter = .images // Только изображения
+
+        let picker = PHPickerViewController(configuration: configuration)
+        picker.delegate = self
+        present(picker, animated: true)
     }
     
     @objc private func savePetTapped() {
@@ -149,6 +201,9 @@ class CreatePetViewController: UIViewController, UIImagePickerControllerDelegate
               let age = ageTextField.text, !age.isEmpty,
               let breed = breedTextField.text, !breed.isEmpty,
               let category = categoryTextField.text, !category.isEmpty,
+              let gender = genderTextField.text, !gender.isEmpty,
+              let color = colorTextField.text, !color.isEmpty,
+              let description = descriptionTextView.text, !description.isEmpty,
               !selectedImages.isEmpty else {
             showErrorAlert(message: "Заполните все поля и добавьте хотя бы одно фото!")
             return
@@ -159,16 +214,16 @@ class CreatePetViewController: UIViewController, UIImagePickerControllerDelegate
             age: age,
             breed: breed,
             category: category,
-            isLost: statusSegmentedControl.selectedSegmentIndex == 1 ? true : false,
+            isLost: statusSegmentedControl.selectedSegmentIndex == 1,
             images: selectedImages
         ) { success in
             if success {
                 self.onPetAdded?()
                 self.dismiss(animated: true)
             } else {
-                self.showErrorAlert(message: "Error in uploading pet data")
+                self.showErrorAlert(message: "Ошибка при загрузке данных питомца")
             }
-            }
+        }
     }
     
     private func showErrorAlert(message: String) {
@@ -183,6 +238,24 @@ class CreatePetViewController: UIViewController, UIImagePickerControllerDelegate
         photoCollectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "cell")
     }
     
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        if textView.textColor == .lightGray {
+            textView.text = ""
+            textView.textColor = .black
+        }
+    }
+
+    @objc private func backButtonTapped() {
+        self.dismiss(animated: true)
+    }
+    
+    func textViewDidEndEditing(_ textView: UITextView) {
+        if textView.text.isEmpty {
+            textView.text = "Description"
+            textView.textColor = .lightGray
+        }
+    }
+    
     private static func createTextField(placeholder: String, keyboardType: UIKeyboardType = .default) -> UITextField {
         let textField = UITextField()
         textField.placeholder = placeholder
@@ -193,7 +266,6 @@ class CreatePetViewController: UIViewController, UIImagePickerControllerDelegate
     }
 }
 
-// MARK: - UICollectionView DataSource & Delegate
 extension CreatePetViewController: UICollectionViewDataSource, UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return selectedImages.count
@@ -206,5 +278,33 @@ extension CreatePetViewController: UICollectionViewDataSource, UICollectionViewD
         cell.layer.cornerRadius = 12
         cell.addSubview(imageView)
         return cell
+    }
+}
+
+
+extension CreatePetViewController: PHPickerViewControllerDelegate {
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        var newImages: [UIImage] = []
+        let dispatchGroup = DispatchGroup()  // Create a dispatch group to track async operations
+        
+        for result in results {
+            dispatchGroup.enter()  // Enter the group for each async operation
+            
+            result.itemProvider.loadObject(ofClass: UIImage.self) { (object, error) in
+                if let image = object as? UIImage {
+                    newImages.append(image)
+                }
+                
+                dispatchGroup.leave()  // Leave the group when the image loading is done
+            }
+        }
+        
+        // When all images have been loaded, update the selectedImages array and reload the collection view
+        dispatchGroup.notify(queue: .main) {
+            self.selectedImages.append(contentsOf: newImages)
+            self.photoCollectionView.reloadData()
+        }
+        
+        dismiss(animated: true)
     }
 }

@@ -9,12 +9,21 @@ import Foundation
 
 
 struct MyPetModel: Codable {
-    let images: [String]
+    let id: String
     let name: String
-    let age: String
+    let species: String
     let breed: String
-    let gender: String
-    let category: String
-    let description: String
-    let status: Bool
+    let photoURL: String
+    let status: String
+    let lostDate: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case species
+        case breed
+        case photoURL = "photo_url"
+        case status
+        case lostDate = "lost_date"
+    }
 }

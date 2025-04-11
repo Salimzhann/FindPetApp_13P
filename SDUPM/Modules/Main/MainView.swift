@@ -15,7 +15,7 @@ class MainView: UIViewController {
         return cv
     }()
     
-    private var petsArray: [LosePetsModel] = LosePetsResponse().array
+    private var petsArray: [LostPet] = []
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -25,10 +25,13 @@ class MainView: UIViewController {
         collectionView.delegate = self
         
         presenter.view = self
+        fetchData()
     }
     
     func setupUI() {
         navigationItem.title = "Loose Pets"
+        navigationItem.largeTitleDisplayMode = .never
+        navigationController?.navigationBar.prefersLargeTitles = false
         view.backgroundColor = .systemBackground
         
         view.addSubview(collectionView)
@@ -60,8 +63,8 @@ extension MainView: UICollectionViewDataSource, UICollectionViewDelegate, UIColl
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-            let cellWidth = (collectionView.frame.width - 10) / 2
-            return CGSize(width: cellWidth, height: 250)
+            let cellWidth = collectionView.frame.width
+            return CGSize(width: cellWidth, height: 90)
         }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {

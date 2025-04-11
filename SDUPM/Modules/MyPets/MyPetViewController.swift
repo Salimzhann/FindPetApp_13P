@@ -55,7 +55,7 @@ class MyPetViewController: UIViewController, IMyPetViewController {
         button.setTitle("Add Pet", for: .normal)
         button.setTitleColor(.white, for: .normal)
         button.backgroundColor = .systemGreen
-        button.layer.cornerRadius = 16
+        button.layer.cornerRadius = 12
         button.addTarget(self, action: #selector(addTaped), for: .touchUpInside)
         button.titleLabel?.font = UIFont.systemFont(ofSize: 20, weight: .semibold)
         
