@@ -38,7 +38,7 @@ class MainView: UIViewController {
     }
     
     func setupUI() {
-        navigationItem.title = "Loose Pets"
+        navigationItem.title = "Lost Pets"
         navigationItem.largeTitleDisplayMode = .never
         navigationController?.navigationBar.prefersLargeTitles = false
         view.backgroundColor = .systemBackground
