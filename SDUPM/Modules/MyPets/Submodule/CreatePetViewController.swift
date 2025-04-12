@@ -66,7 +66,7 @@ class CreatePetViewController: UIViewController, UITextViewDelegate {
         return textView
     }()
     
-    var onPetAdded: (() -> Void)?
+    var onPetAdded: ((MyPetModel) -> Void)?
     
     private let statusSegmentedControl: UISegmentedControl = {
         let control = UISegmentedControl(items: ["Not Lost", "Lost"])
@@ -209,6 +209,8 @@ class CreatePetViewController: UIViewController, UITextViewDelegate {
             return
         }
         
+        let index = 0
+        
         presenter.uploadPetData(
             name: name,
             age: age,
@@ -218,7 +220,7 @@ class CreatePetViewController: UIViewController, UITextViewDelegate {
             images: selectedImages
         ) { success in
             if success {
-                self.onPetAdded?()
+                self.onPetAdded?(MyPetModel(id: index, name: name, species: category, breed: breed, age: age, images: self.selectedImages, status: self.statusSegmentedControl.selectedSegmentIndex == 1 ? "lost" : "not lost", description: description, gender: gender))
                 self.dismiss(animated: true)
             } else {
                 self.showErrorAlert(message: "Ошибка при загрузке данных питомца")

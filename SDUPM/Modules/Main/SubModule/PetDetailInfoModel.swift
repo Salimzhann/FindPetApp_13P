@@ -14,4 +14,6 @@ struct PetDetailInfoModel: Codable {
     let age: String
     let gender: String
     let description: String
+    let phone: String
+    let gisLing: String
 }

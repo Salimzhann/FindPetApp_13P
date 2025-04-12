@@ -1,18 +1,18 @@
 //
-//  PetDetailInformationViewController.swift
+//  MyPetDetailViewController.swift
 //  SDUPM
 //
-//  Created by Manas Salimzhan on 01.04.2025.
+//  Created by Manas Salimzhan on 12.04.2025.
 //
 
-import UIKit
 import SnapKit
+import UIKit
 
-protocol IPetDetailInformationViewController: AnyObject {
-    var detailInfo: PetDetailInfoModel? { get set }
-}
 
-class PetDetailInformationViewController: UIViewController, IPetDetailInformationViewController {
+class MyPetDetailViewController: UIViewController {
+    
+    private let presenter = MyPetDetailPresenter()
+    
     private let collectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
@@ -54,22 +54,6 @@ class PetDetailInformationViewController: UIViewController, IPetDetailInformatio
         label.numberOfLines = 0
         return label
     }()
-    private let phoneButton: UIButton = {
-        let button = UIButton()
-        button.backgroundColor = .systemBlue
-        button.setTitle("Позвонить", for: .normal)
-        button.layer.cornerRadius = 8
-        button.addTarget(self, action: #selector(callTaped), for: .touchUpInside)
-        return button
-    }()
-    private let gisButton: UIButton = {
-        let button = UIButton()
-        button.backgroundColor = .systemGreen
-        button.setTitle("2GIS", for: .normal)
-        button.layer.cornerRadius = 8
-        button.addTarget(self, action: #selector(gisTapped), for: .touchUpInside)
-        return button
-    }()
     private lazy var stackView: UIStackView = {
         let stackView = UIStackView(arrangedSubviews: [makeSeparator(),
                                                        ageLabel,
@@ -85,12 +69,10 @@ class PetDetailInformationViewController: UIViewController, IPetDetailInformatio
         return stackView
     }()
     
-    private let presenter = PetDetailInformationPresenter()
+    private let model: MyPetModel
+    private var images: [UIImage] = []
     
-    private let id: Int
-    private var images: [String] = []
-    
-    var detailInfo: PetDetailInfoModel? = nil {
+    var detailInfo: MyPetModel? = nil {
         didSet {
             images = detailInfo?.images ?? []
             nameLabel.text = detailInfo?.name
@@ -103,25 +85,30 @@ class PetDetailInformationViewController: UIViewController, IPetDetailInformatio
         }
     }
     
-    init(id: Int) {
-        self.id = id
+    init(model: MyPetModel) {
+        self.model = model
         super.init(nibName: nil, bundle: nil)
+        
+        configure()
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
+    private func configure() {
+        detailInfo = model
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        fetchData()
         setupUI()
         presenter.view = self
         
         collectionView.delegate = self
         collectionView.dataSource = self
         
-        presenter.sendRequest(id: id)
+        
     }
     
     private func setupUI() {
@@ -130,7 +117,7 @@ class PetDetailInformationViewController: UIViewController, IPetDetailInformatio
         
         view.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(20)
+            make.top.equalToSuperview().offset(140)
             make.leading.trailing.equalToSuperview()
             make.height.equalTo(250)
         }
@@ -158,34 +145,6 @@ class PetDetailInformationViewController: UIViewController, IPetDetailInformatio
             make.top.equalTo(stackView.snp.bottom).offset(5)
             make.leading.trailing.equalToSuperview().inset(20)
         }
-        
-        view.addSubview(phoneButton)
-        phoneButton.snp.makeConstraints { make in
-            make.bottom.equalToSuperview().offset(-40)
-            make.leading.equalToSuperview().inset(20)
-            make.trailing.equalTo(view.snp.centerX).inset(5)
-            make.height.equalTo(46)
-        }
-        
-        view.addSubview(gisButton)
-        gisButton.snp.makeConstraints { make in
-            make.bottom.equalToSuperview().offset(-40)
-            make.leading.equalTo(phoneButton.snp.trailing).offset(10)
-            make.trailing.equalToSuperview().inset(20)
-            make.height.equalTo(46)
-        }
-    }
-    
-    private func fetchData() {
-        presenter.sendRequest(id: id)
-    }
-    
-    @objc private func callTaped() {
-        presenter.callTaped(id: id)
-    }
-    
-    @objc private func gisTapped() {
-        presenter.gisLinkTaped(id: id)
     }
     
     private func makeSeparator() -> UIView {
@@ -201,7 +160,7 @@ class PetDetailInformationViewController: UIViewController, IPetDetailInformatio
 }
 
 
-extension PetDetailInformationViewController: UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+extension MyPetDetailViewController: UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         images.count
@@ -209,7 +168,7 @@ extension PetDetailInformationViewController: UICollectionViewDelegate, UICollec
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: PetDetailCell.identifier, for: indexPath) as! PetDetailCell
-        cell.configure(with: images[indexPath.row])
+        cell.configure(image: images[indexPath.row])
         return cell
     }
     

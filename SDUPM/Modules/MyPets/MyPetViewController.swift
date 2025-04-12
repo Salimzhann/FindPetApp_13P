@@ -22,9 +22,9 @@ class MyPetViewController: UIViewController, IMyPetViewController {
     
     var myPetsArray: [MyPetModel] = [] {
         didSet {
-            tableView.reloadData()
+            collectionView.reloadData()
             emptyStackView.isHidden = !myPetsArray.isEmpty
-            tableView.isHidden = myPetsArray.isEmpty
+            collectionView.isHidden = myPetsArray.isEmpty
         }
     }
     
@@ -61,19 +61,31 @@ class MyPetViewController: UIViewController, IMyPetViewController {
         
         return button
     }()
-    private let tableView: UITableView = {
-        let tableView = UITableView(frame: .zero, style: .plain)
-        tableView.showsVerticalScrollIndicator = false
-        tableView.register(MyPetCell.self, forCellReuseIdentifier: MyPetCell.identifier)
-        tableView.isHidden = true
-        return tableView
+    private let collectionView: UICollectionView = {
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .vertical
+        layout.minimumInteritemSpacing = 5
+        layout.minimumLineSpacing = 10
+        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        cv.showsVerticalScrollIndicator = false
+        cv.register(MyPetCell.self, forCellWithReuseIdentifier: MyPetCell.identifier)
+        return cv
     }()
     private let activityIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .large)
         indicator.hidesWhenStopped = true
         return indicator
     }()
-    private let refreshControl = UIRefreshControl()
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        self.navigationController?.setNavigationBarHidden(true, animated: animated)
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        self.navigationController?.setNavigationBarHidden(false, animated: animated)
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -81,8 +93,8 @@ class MyPetViewController: UIViewController, IMyPetViewController {
         
         presenter.view = self
         
-        tableView.dataSource = self
-        tableView.delegate = self
+        collectionView.dataSource = self
+        collectionView.delegate = self
         
         fetchData()
     }
@@ -103,9 +115,9 @@ class MyPetViewController: UIViewController, IMyPetViewController {
             make.height.equalTo(46)
         }
         
-        view.addSubview(tableView)
-        tableView.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(30)
+        view.addSubview(collectionView)
+        collectionView.snp.makeConstraints { make in
+            make.top.equalToSuperview()
             make.leading.trailing.equalToSuperview().inset(20)
             make.bottom.equalTo(addButton.snp.top).offset(-20)
         }
@@ -114,8 +126,6 @@ class MyPetViewController: UIViewController, IMyPetViewController {
         activityIndicator.snp.makeConstraints { make in
             make.center.equalToSuperview()
         }
-        tableView.refreshControl = refreshControl
-        refreshControl.addTarget(self, action: #selector(refreshData), for: .valueChanged)
     }
     
     private func fetchData() {
@@ -135,22 +145,26 @@ class MyPetViewController: UIViewController, IMyPetViewController {
         emptyStackView.isHidden = false
         activityIndicator.stopAnimating()
     }
-    
-    @objc private func refreshData() {
-        presenter.fetchData()
-        refreshControl.endRefreshing()
-    }
 }
 
-extension MyPetViewController: UITableViewDelegate, UITableViewDataSource {
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+extension MyPetViewController: UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         myPetsArray.count
     }
     
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: MyPetCell.identifier, for: indexPath) as! MyPetCell
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: MyPetCell.identifier, for: indexPath) as! MyPetCell
         cell.item = myPetsArray[indexPath.row]
         return cell
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+            let cellWidth = collectionView.frame.width
+            return CGSize(width: cellWidth, height: 90)
+        }
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let vc = MyPetDetailViewController(model: myPetsArray[indexPath.row])
+        navigationController?.pushViewController(vc, animated: true)
     }
 }

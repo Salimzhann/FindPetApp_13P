@@ -34,9 +34,10 @@ class LosePetsCell: UICollectionViewCell {
     var item: LostPet? {
         didSet {
             loadImage(from: item?.imageUrl ?? "", into: petImageView)
-            infoLabel.text = "\(item?.name), \(item?.age) лет"
-            breedLabel.text = "\(item?.species)"
-            sexLabel.text = item?.gender
+            infoLabel.text = "\(item?.name ?? ""), \(item?.age ?? 1) лет"
+            breedLabel.text = "Category: \(item?.species ?? "")"
+            sexLabel.text = "Gender: \(item?.gender ?? "")"
+            setupView()
         }
     }
 
@@ -54,7 +55,7 @@ class LosePetsCell: UICollectionViewCell {
         addSubview(petImageView)
         petImageView.snp.makeConstraints { make in
             make.top.leading.bottom.equalToSuperview().inset(10)
-            make.width.equalTo(130)
+            make.width.equalTo(120)
         }
         
         addSubview(infoLabel)

@@ -31,6 +31,10 @@ class PetDetailCell: UICollectionViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
+    func configure(image: UIImage) {
+        imageView.image = image
+    }
+    
     func configure(with imageUrlString: String) {
         guard let url = URL(string: imageUrlString) else {
             imageView.image = UIImage(named: "placeholder") // fallback

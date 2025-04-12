@@ -17,53 +17,53 @@ class NetworkServiceProvider {
     let api: String = NetworkService.api
     
     
-    func fetchUserPets(completion: @escaping ([MyPetModel]?) -> Void) {
-        guard let url = URL(string: "https://petradar.up.railway.app/users/me/pets") else {
-            print("Неверный URL")
-            completion(nil)
-            return
-        }
-
-        guard let token = UserDefaults.standard.string(forKey: LoginInViewModel.tokenIdentifier) else {
-            print("Токен не найден")
-            completion(nil)
-            return
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("Ошибка: \(error.localizedDescription)")
-                completion(nil)
-                return
-            }
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode) else {
-                print("Ошибка HTTP ответа")
-                completion(nil)
-                return
-            }
-
-            guard let data = data else {
-                print("Нет данных")
-                completion(nil)
-                return
-            }
-
-            do {
-                let pets = try JSONDecoder().decode([MyPetModel].self, from: data)
-                completion(pets)
-            } catch {
-                print("Ошибка декодирования: \(error)")
-                completion(nil)
-            }
-        }
-        task.resume()
-    }
+//    func fetchUserPets(completion: @escaping ([MyPetModel]?) -> Void) {
+//        guard let url = URL(string: "https://petradar.up.railway.app/users/me/pets") else {
+//            print("Неверный URL")
+//            completion(nil)
+//            return
+//        }
+//
+//        guard let token = UserDefaults.standard.string(forKey: LoginInViewModel.tokenIdentifier) else {
+//            print("Токен не найден")
+//            completion(nil)
+//            return
+//        }
+//
+//        var request = URLRequest(url: url)
+//        request.httpMethod = "GET"
+//        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+//
+//        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+//            if let error = error {
+//                print("Ошибка: \(error.localizedDescription)")
+//                completion(nil)
+//                return
+//            }
+//
+//            guard let httpResponse = response as? HTTPURLResponse,
+//                  (200...299).contains(httpResponse.statusCode) else {
+//                print("Ошибка HTTP ответа")
+//                completion(nil)
+//                return
+//            }
+//
+//            guard let data = data else {
+//                print("Нет данных")
+//                completion(nil)
+//                return
+//            }
+//
+//            do {
+//                let pets = try JSONDecoder().decode([MyPetModel].self, from: data)
+//                completion(pets)
+//            } catch {
+//                print("Ошибка декодирования: \(error)")
+//                completion(nil)
+//            }
+//        }
+//        task.resume()
+//    }
     
     func fetchUserProfile(completion: @escaping (UserProfile?) -> Void) {
         guard let url = URL(string: "https://petradar.up.railway.app/users/me") else {

@@ -15,16 +15,19 @@ class MyPetPresenter {
     
     func fetchData() {
         view?.showLoading()
-        provider.fetchUserPets { [weak self] data in
-            if let data = data {
-                print("good thing")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    self?.view?.myPetsArray = data
-                    self?.view?.hideLoading()
-                }
-            } else {
-                print("False thing")
-            }
+//        provider.fetchUserPets { [weak self] data in
+//            if let data = data {
+//                print("good thing")
+//                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+//                    self?.view?.myPetsArray = data
+//                    self?.view?.hideLoading()
+//                }
+//            } else {
+//                print("False thing")
+//            }
+//        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            self.view?.hideLoading()
         }
     }
     
@@ -34,8 +37,9 @@ class MyPetPresenter {
         vc.modalTransitionStyle = .coverVertical // Анимация снизу вверх
         view.present(vc, animated: true)
         
-        vc.onPetAdded = { [weak self] in
-            self?.fetchData()
+        vc.onPetAdded = { [weak self] data in
+            self?.view?.myPetsArray.append(data)
+//            self?.fetchData()
         }
     }
 }

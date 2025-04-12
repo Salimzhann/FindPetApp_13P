@@ -7,44 +7,29 @@
 
 import UIKit
 
-class MyPetCell: UITableViewCell {
+class MyPetCell: UICollectionViewCell {
     private let petImageView: UIImageView = {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 5
         return imageView
     }()
-    private let nameLabel: UILabel = {
+    private let infoLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 17, weight: .medium)
+        label.font = .systemFont(ofSize: 17, weight: .bold)
+        label.textColor = .label
         return label
     }()
     private let breedLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 14, weight: .regular)
+        label.font = .systemFont(ofSize: 13, weight: .regular)
         label.textColor = .secondaryLabel
         return label
     }()
-    private let categoryLabel: UILabel = {
+    private let sexLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 14, weight: .regular)
-        label.textColor = .secondaryLabel
-        return label
-    }()
-    private let ageLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 14, weight: .regular)
-        label.textColor = .secondaryLabel
-        return label
-    }()
-    private let genderLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 14, weight: .regular)
-        label.textColor = .secondaryLabel
-        return label
-    }()
-    private let statusLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 14, weight: .regular)
+        label.font = .systemFont(ofSize: 13, weight: .regular)
         label.textColor = .secondaryLabel
         return label
     }()
@@ -53,37 +38,40 @@ class MyPetCell: UITableViewCell {
     
     var item: MyPetModel? {
         didSet {
-            nameLabel.text = item?.name
-            breedLabel.text = item?.breed
-            categoryLabel.text = item?.species
-            genderLabel.text = "\(item?.lostDate)"
-            statusLabel.text = item?.status
+            petImageView.image = item?.images[0]
+            infoLabel.text = "\(item?.name ?? ""), \(item?.age ?? "")"
+            breedLabel.text = item?.species ?? ""
+            sexLabel.text = "\(item?.gender ?? "")"
             setupView()
         }
     }
     
     private func setupView() {
+        backgroundColor = UIColor(red: 0.8, green: 1.0, blue: 0.8, alpha: 1.0)
+        self.layer.cornerRadius = 12
         
         addSubview(petImageView)
         petImageView.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(8)
-            make.leading.equalToSuperview().inset(8)
-            make.bottom.equalToSuperview().offset(-8)
-            make.height.equalTo(60)
-            make.width.equalTo(100)
+            make.top.leading.bottom.equalToSuperview().inset(10)
+            make.width.equalTo(120)
         }
         
-        addSubview(nameLabel)
-        nameLabel.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(8)
-            make.leading.equalTo(petImageView.snp.trailing).offset(5)
+        addSubview(infoLabel)
+        infoLabel.snp.makeConstraints { make in
+            make.top.equalToSuperview().offset(10)
+            make.leading.equalTo(petImageView.snp.trailing).offset(10)
         }
         
-        addSubview(genderLabel)
-        genderLabel.snp.makeConstraints { make in
-            make.top.equalTo(nameLabel.snp.bottom).offset(5)
-            make.leading.equalTo(nameLabel)
+        addSubview(breedLabel)
+        breedLabel.snp.makeConstraints { make in
+            make.top.equalTo(infoLabel.snp.bottom).offset(5)
+            make.leading.equalTo(infoLabel)
         }
         
+        addSubview(sexLabel)
+        sexLabel.snp.makeConstraints { make in
+            make.top.equalTo(breedLabel.snp.bottom).offset(5)
+            make.leading.equalTo(breedLabel)
+        }
     }
 }
