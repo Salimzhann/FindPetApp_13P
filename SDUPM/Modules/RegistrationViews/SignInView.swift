@@ -120,6 +120,8 @@ class SignInView: UIViewController, UITextFieldDelegate{
         setupUI()
         buttonSetups()
         setupTextfields()
+        
+        hideKeyboardWhenTappedAround()
     }
     
     func setupUI() {
@@ -253,7 +255,6 @@ class SignInView: UIViewController, UITextFieldDelegate{
         guard let password = passwordTextField.text , password.isEmpty == false else { return }
         guard let phoneNumber = numberTextfield.text , phoneNumber.isEmpty == false else { return }
         self.showLoadingOnButton()
-        
         apiSender.sendUserData(name: name, surname: surname, email: email, password: password, phoneNumber: phoneNumber) { responseString in
             DispatchQueue.main.async {
                 guard let response = responseString else { return }
@@ -274,5 +275,19 @@ class SignInView: UIViewController, UITextFieldDelegate{
                 }
             }
         }
+    }
+}
+
+
+extension UIViewController {
+    func hideKeyboardWhenTappedAround() {
+        let tap = UITapGestureRecognizer(target: self,
+                                         action: #selector(UIViewController.dismissKeyboard))
+        tap.cancelsTouchesInView = false // Чтобы не блокировать нажатия на кнопки
+        view.addGestureRecognizer(tap)
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
     }
 }

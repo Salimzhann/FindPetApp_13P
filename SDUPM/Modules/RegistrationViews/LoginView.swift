@@ -64,6 +64,7 @@ class LoginView: UIViewController {
         super.viewDidLoad()
         setupUI()
         setupButtons()
+        hideKeyboardWhenTappedAround()
     }
     
     func setupUI() {

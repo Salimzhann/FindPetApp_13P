@@ -55,6 +55,7 @@ class ConfirmEmailViewController: UIViewController {
     
     override func viewDidLoad() {
         setupViews()
+        hideKeyboardWhenTappedAround()
     }
     
     private func setupViews() {

@@ -91,6 +91,7 @@ class CreatePetViewController: UIViewController, UITextViewDelegate {
         setupActions()
         setupCollectionView()
         descriptionTextView.delegate = self
+        hideKeyboardWhenTappedAround()
     }
     
     private func setupViews() {
