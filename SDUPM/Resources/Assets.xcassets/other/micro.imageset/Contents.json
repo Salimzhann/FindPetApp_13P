@@ -1,0 +1,21 @@
+{
+  "images" : [
+    {
+      "filename" : "https:www.google.comurl?sa=i&url=https%3A%2F%2Fwww.thomann.de%2Fie%2Fdpa_4055_kick_drum_microphone.htm&psig=AOvVaw0SSBG6oTsIYLnglGbi36Wh&ust=1730555543588000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCNjv2Iaku4kDFQAAAAAdAAAAABAE.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "idiom" : "universal",
+      "scale" : "3x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
