@@ -5,8 +5,11 @@
 //  Created by Manas Salimzhan on 02.04.2025.
 //
 
-import UIKit
+// File path: SDUPM/Modules/MyPets/MyPetModel.swift
 
+// File path: SDUPM/Modules/MyPets/MyPetModel.swift
+
+import UIKit
 
 struct MyPetModel {
     let id: Int
@@ -14,19 +17,56 @@ struct MyPetModel {
     let species: String
     let breed: String
     let age: String
-    let images: [UIImage]
+    var images: [UIImage]  // Using 'var' to allow modification
     let status: String
     let description: String
     let gender: String
-//    let lostDate: String
-//
-//    enum CodingKeys: String, CodingKey {
-//        case id
-//        case name
-//        case species
-//        case breed
-//        case photoURL = "photo_url"
-//        case status
-//        case lostDate = "lost_date"
-//    }
+    let photoURLs: [String]
+    let lastSeenLocation: String?
+    let lostDate: String?
+    
+    // Helper computed properties
+    var statusFormatted: String {
+        switch status {
+        case "lost":
+            return "Lost"
+        case "home":
+            return "At Home"
+        case "found":
+            return "Found"
+        default:
+            return status.capitalized
+        }
+    }
+    
+    var statusColor: UIColor {
+        switch status {
+        case "lost":
+            return .systemRed
+        case "home":
+            return .systemGreen
+        case "found":
+            return .systemBlue
+        default:
+            return .systemGray
+        }
+    }
+    
+    // Add this method to create a new instance with updated images
+    func withImages(_ newImages: [UIImage]) -> MyPetModel {
+        return MyPetModel(
+            id: self.id,
+            name: self.name,
+            species: self.species,
+            breed: self.breed,
+            age: self.age,
+            images: newImages,
+            status: self.status,
+            description: self.description,
+            gender: self.gender,
+            photoURLs: self.photoURLs,
+            lastSeenLocation: self.lastSeenLocation,
+            lostDate: self.lostDate
+        )
+    }
 }

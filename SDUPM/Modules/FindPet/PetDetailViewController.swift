@@ -213,11 +213,11 @@ class PetDetailViewController: UIViewController {
         // Add all info views
         var infoViews = [
             createInfoView(title: "SPECIES", detail: pet.species.capitalized),
-            createInfoView(title: "BREED", detail: pet.breed),
-            createInfoView(title: "AGE", detail: "\(pet.age) year\(pet.age > 1 ? "s" : "")"),
+            createInfoView(title: "BREED", detail: pet.breed ?? ""),
+            createInfoView(title: "AGE", detail: "\(String(describing: pet.age)) year"),
             createInfoView(title: "COLOR", detail: pet.color),
-            createInfoView(title: "GENDER", detail: pet.gender.capitalized),
-            createInfoView(title: "DISTINCTIVE FEATURES", detail: pet.distinctive_features),
+            createInfoView(title: "GENDER", detail: pet.gender ?? ""),
+            createInfoView(title: "DISTINCTIVE FEATURES", detail: pet.distinctive_features ?? ""),
         ]
         
         // Add location if available

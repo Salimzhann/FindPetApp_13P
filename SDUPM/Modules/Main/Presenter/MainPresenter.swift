@@ -20,6 +20,6 @@ class MainPresenter {
     }
     
     func receiveData(completion: @escaping ([LostPet]) -> Void) {
-        provider.fetchLostPets()
+        provider.fetchLostPets(completion: completion)
     }
 }

@@ -5,17 +5,12 @@
 //  Created by Manas Salimzhan on 08.04.2025.
 //
 
+// File path: SDUPM/Modules/FindPet/FindPetPresenter.swift
+
 import UIKit
 
 protocol IFindPetPresenter {
     func searchPet(photo: UIImage, species: String, color: String, gender: String?, breed: String?)
-}
-
-protocol IFindPetView: AnyObject {
-    func showLoading()
-    func hideLoading()
-    func navigateToSearchResults(response: PetSearchResponse)
-    func showError(message: String)
 }
 
 class FindPetPresenter: IFindPetPresenter {
@@ -27,15 +22,14 @@ class FindPetPresenter: IFindPetPresenter {
         view?.showLoading()
         
         provider.searchPet(photo: photo, species: species, color: color, gender: gender, breed: breed) { [weak self] result in
-            DispatchQueue.main.async {
+            switch result {
+            case .success(let response):
                 self?.view?.hideLoading()
+                self?.view?.navigateToSearchResults(response: response)
                 
-                switch result {
-                case .success(let response):
-                    self?.view?.navigateToSearchResults(response: response)
-                case .failure(let error):
-                    self?.view?.showError(message: error.localizedDescription)
-                }
+            case .failure(let error):
+                self?.view?.hideLoading()
+                self?.view?.showError(message: "Search failed: \(error.localizedDescription)")
             }
         }
     }

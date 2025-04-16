@@ -7,6 +7,8 @@
 
 // File path: SDUPM/Modules/FindPet/FoundPetViewController.swift
 
+// File path: SDUPM/Modules/FindPet/FoundPetViewController.swift
+
 import UIKit
 import SnapKit
 
@@ -16,6 +18,8 @@ class FoundPetViewController: UIViewController {
     private var matches: [PetMatch] {
         return searchResponse.matches
     }
+    
+    // MARK: - UI Components
     
     private let tableView: UITableView = {
         let tableView = UITableView()
@@ -114,6 +118,8 @@ class FoundPetViewController: UIViewController {
         return label
     }()
     
+    // MARK: - Initialization
+    
     init(searchResponse: PetSearchResponse) {
         self.searchResponse = searchResponse
         super.init(nibName: nil, bundle: nil)
@@ -123,12 +129,16 @@ class FoundPetViewController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
+    // MARK: - Lifecycle Methods
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupView()
         setupTableView()
         updateEmptyState()
     }
+    
+    // MARK: - Setup Methods
     
     private func setupView() {
         title = "Search Results"
@@ -222,13 +232,8 @@ class FoundPetViewController: UIViewController {
     }
     
     private func updateEmptyState() {
-        if matches.isEmpty {
-            emptyStateView.isHidden = false
-            tableView.isHidden = true
-        } else {
-            emptyStateView.isHidden = true
-            tableView.isHidden = false
-        }
+        emptyStateView.isHidden = !matches.isEmpty
+        tableView.isHidden = matches.isEmpty
     }
     
     @objc private func openInstagramLink() {
@@ -239,6 +244,7 @@ class FoundPetViewController: UIViewController {
 }
 
 // MARK: - UITableViewDelegate, UITableViewDataSource
+
 extension FoundPetViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return matches.count
@@ -259,8 +265,11 @@ extension FoundPetViewController: UITableViewDelegate, UITableViewDataSource {
     }
 }
 
-// MARK: - Custom Cell for Pet Matches
+// MARK: - PetMatchCell
+
 class PetMatchCell: UITableViewCell {
+    
+    // MARK: - UI Components
     
     private let containerView: UIView = {
         let view = UIView()
@@ -306,6 +315,8 @@ class PetMatchCell: UITableViewCell {
         return label
     }()
     
+    // MARK: - Initialization
+    
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         setupCell()
@@ -314,6 +325,8 @@ class PetMatchCell: UITableViewCell {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    
+    // MARK: - Setup
     
     private func setupCell() {
         selectionStyle = .none
@@ -361,6 +374,8 @@ class PetMatchCell: UITableViewCell {
         }
     }
     
+    // MARK: - Configuration
+    
     func configure(with match: PetMatch) {
         let pet = match.pet
         
@@ -388,5 +403,14 @@ class PetMatchCell: UITableViewCell {
                 self?.petImageView.image = image
             }
         }.resume()
+    }
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        petImageView.image = nil
+        nameLabel.text = nil
+        speciesLabel.text = nil
+        breedLabel.text = nil
+        similarityLabel.text = nil
     }
 }

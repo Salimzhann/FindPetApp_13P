@@ -7,13 +7,25 @@
 
 // File path: SDUPM/Modules/FindPet/FindPetViewController.swift
 
+// File path: SDUPM/Modules/FindPet/FindPetViewController.swift
+
 import UIKit
 import SnapKit
+import PhotosUI
+
+protocol IFindPetView: AnyObject {
+    func showLoading()
+    func hideLoading()
+    func navigateToSearchResults(response: PetSearchResponse)
+    func showError(message: String)
+}
 
 class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, IFindPetView {
     
     private var selectedImages: [UIImage] = []
     private let presenter = FindPetPresenter()
+    
+    // MARK: - UI Components
     
     private let photoCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
@@ -60,6 +72,8 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
         return indicator
     }()
     
+    // MARK: - Lifecycle Methods
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
@@ -71,6 +85,8 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
         configurePresenter()
         hideKeyboardWhenTappedAround()
     }
+    
+    // MARK: - Setup Methods
     
     private func configurePresenter() {
         presenter.view = self
@@ -139,11 +155,32 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
         searchButton.addTarget(self, action: #selector(searchPetTapped), for: .touchUpInside)
     }
     
+    private func setupCollectionView() {
+        photoCollectionView.delegate = self
+        photoCollectionView.dataSource = self
+        photoCollectionView.register(SearchPhotoCell.self, forCellWithReuseIdentifier: "SearchPhotoCell")
+    }
+    
+    // MARK: - Actions
+    
     @objc private func uploadPhotoTapped() {
-        let imagePicker = UIImagePickerController()
-        imagePicker.delegate = self
-        imagePicker.sourceType = .photoLibrary
-        present(imagePicker, animated: true)
+        // Standard UIImagePicker
+        if #available(iOS 14, *) {
+            // Use PHPicker for iOS 14 and up
+            var config = PHPickerConfiguration()
+            config.selectionLimit = 1
+            config.filter = .images
+            
+            let picker = PHPickerViewController(configuration: config)
+            picker.delegate = self
+            present(picker, animated: true)
+        } else {
+            // Fallback to UIImagePicker for older iOS
+            let imagePicker = UIImagePickerController()
+            imagePicker.delegate = self
+            imagePicker.sourceType = .photoLibrary
+            present(imagePicker, animated: true)
+        }
     }
     
     @objc private func searchPetTapped() {
@@ -169,22 +206,30 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
     // MARK: - IFindPetView Implementation
     
     func showLoading() {
-        activityIndicator.startAnimating()
-        searchButton.isEnabled = false
+        DispatchQueue.main.async {
+            self.activityIndicator.startAnimating()
+            self.searchButton.isEnabled = false
+        }
     }
     
     func hideLoading() {
-        activityIndicator.stopAnimating()
-        searchButton.isEnabled = true
+        DispatchQueue.main.async {
+            self.activityIndicator.stopAnimating()
+            self.searchButton.isEnabled = true
+        }
     }
     
     func navigateToSearchResults(response: PetSearchResponse) {
-        let resultsVC = FoundPetViewController(searchResponse: response)
-        navigationController?.pushViewController(resultsVC, animated: true)
+        DispatchQueue.main.async {
+            let resultsVC = FoundPetViewController(searchResponse: response)
+            self.navigationController?.pushViewController(resultsVC, animated: true)
+        }
     }
     
     func showError(message: String) {
-        showErrorAlert(message: message)
+        DispatchQueue.main.async {
+            self.showErrorAlert(message: message)
+        }
     }
     
     // MARK: - UIImagePickerControllerDelegate
@@ -205,12 +250,6 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
         present(alert, animated: true)
     }
     
-    private func setupCollectionView() {
-        photoCollectionView.delegate = self
-        photoCollectionView.dataSource = self
-        photoCollectionView.register(PhotoCell.self, forCellWithReuseIdentifier: "PhotoCell")
-    }
-    
     static func createTextField(placeholder: String, required: Bool = false, keyboardType: UIKeyboardType = .default) -> UITextField {
         let textField = UITextField()
         let placeholderText = required ? "\(placeholder) *" : placeholder
@@ -222,21 +261,47 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
     }
 }
 
+// MARK: - PHPickerViewControllerDelegate
+
+@available(iOS 14, *)
+extension FindPetViewController: PHPickerViewControllerDelegate {
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        dismiss(animated: true)
+        
+        guard let result = results.first else { return }
+        
+        result.itemProvider.loadObject(ofClass: UIImage.self) { [weak self] object, error in
+            if let image = object as? UIImage {
+                DispatchQueue.main.async {
+                    self?.selectedImages = [image]
+                    self?.photoCollectionView.reloadData()
+                }
+            } else if let error = error {
+                DispatchQueue.main.async {
+                    self?.showError(message: "Failed to load image: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+}
+
 // MARK: - UICollectionView DataSource & Delegate
+
 extension FindPetViewController: UICollectionViewDataSource, UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return selectedImages.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "PhotoCell", for: indexPath) as! PhotoCell
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "SearchPhotoCell", for: indexPath) as! SearchPhotoCell
         cell.configure(with: selectedImages[indexPath.item])
         return cell
     }
 }
 
-// MARK: - Photo Cell
-class PhotoCell: UICollectionViewCell {
+// MARK: - Search Photo Cell
+
+class SearchPhotoCell: UICollectionViewCell {
     private let imageView = UIImageView()
     
     override init(frame: CGRect) {
