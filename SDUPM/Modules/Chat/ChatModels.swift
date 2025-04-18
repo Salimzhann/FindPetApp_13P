@@ -16,9 +16,21 @@ struct Chat: Codable {
     var last_message: ChatMessage?
     var unread_count: Int
     
-    // Для отображения в списке чатов
+    // Для отображения в списке чатов - не декодируются из JSON
     var otherUserName: String = "User"
     var petName: String = "Pet"
+    
+    // Определение кодируемых ключей для исключения UI-свойств
+    enum CodingKeys: String, CodingKey {
+        case id
+        case pet_id
+        case user1_id
+        case user2_id
+        case created_at
+        case updated_at
+        case last_message
+        case unread_count
+    }
 }
 
 struct ChatMessage: Codable {
