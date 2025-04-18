@@ -2,27 +2,20 @@ import UIKit
 import SnapKit
 import MapKit
 
-class MainView: UIViewController {
+class MainView: UIViewController, MainViewProtocol {
     
-    private let presenter = MainPresenter()
+    private let presenter: MainPresenterProtocol = MainPresenter()
     
-    enum DisplayMode {
-        case list
-        case map
-    }
+    // MARK: - UI Components
     
-    private var displayMode: DisplayMode = .list {
-        didSet {
-            updateDisplayMode()
-        }
-    }
-    
-    private let displayModeSegmentedControl: UISegmentedControl = {
-        let items = ["Список", "Карта"]
-        let control = UISegmentedControl(items: items)
-        control.selectedSegmentIndex = 0
-        control.tintColor = .systemGreen
-        return control
+    private let segmentedControl: UISegmentedControl = {
+        let items = ["Lost", "Found"]
+        let segmentedControl = UISegmentedControl(items: items)
+        segmentedControl.selectedSegmentIndex = 0
+        segmentedControl.selectedSegmentTintColor = .systemGreen
+        segmentedControl.setTitleTextAttributes([.foregroundColor: UIColor.white], for: .selected)
+        segmentedControl.setTitleTextAttributes([.foregroundColor: UIColor.black], for: .normal)
+        return segmentedControl
     }()
     
     private let collectionView: UICollectionView = {
@@ -36,12 +29,6 @@ class MainView: UIViewController {
         return cv
     }()
     
-    private let mapView: MKMapView = {
-        let map = MKMapView()
-        map.isHidden = true
-        return map
-    }()
-    
     private let activityIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .large)
         indicator.hidesWhenStopped = true
@@ -49,14 +36,55 @@ class MainView: UIViewController {
         return indicator
     }()
     
-    private var petsArray: [LostPet] = []
+    private let errorLabel: UILabel = {
+        let label = UILabel()
+        label.textColor = .systemRed
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.isHidden = true
+        return label
+    }()
     
-    // Для демонстрации карты - примерные координаты в Алматы
-    private let defaultCoordinates: [CLLocationCoordinate2D] = [
-        CLLocationCoordinate2D(latitude: 43.238949, longitude: 76.889709),
-        CLLocationCoordinate2D(latitude: 43.222015, longitude: 76.851258),
-        CLLocationCoordinate2D(latitude: 43.258206, longitude: 76.950542)
-    ]
+    private let emptyView: UIView = {
+        let view = UIView()
+        view.isHidden = true
+        return view
+    }()
+    
+    private let emptyImageView: UIImageView = {
+        let imageView = UIImageView(image: UIImage(systemName: "pawprint.circle"))
+        imageView.tintColor = .systemGray3
+        imageView.contentMode = .scaleAspectFit
+        return imageView
+    }()
+    
+    private let emptyLabel: UILabel = {
+        let label = UILabel()
+        label.text = "No pets found"
+        label.textAlignment = .center
+        label.font = .systemFont(ofSize: 18, weight: .medium)
+        label.textColor = .systemGray
+        return label
+    }()
+    
+    private let viewModeSegmentedControl: UISegmentedControl = {
+        let items = ["List", "Map"]
+        let control = UISegmentedControl(items: items)
+        control.selectedSegmentIndex = 0
+        control.isHidden = true
+        return control
+    }()
+    
+    private let mapView: MKMapView = {
+        let map = MKMapView()
+        map.isHidden = true
+        return map
+    }()
+    
+    private var petsArray: [LostPet] = []
+    private var isMapViewActive = false
+    
+    // MARK: - Lifecycle
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -64,120 +92,224 @@ class MainView: UIViewController {
         
         collectionView.dataSource = self
         collectionView.delegate = self
-        mapView.delegate = self
         
-        presenter.view = self
-        fetchData()
+        (presenter as? MainPresenter)?.view = self
+        
+        fetchLostPets()
     }
     
-    func setupUI() {
-        navigationItem.title = "Потерянные питомцы"
-        navigationItem.largeTitleDisplayMode = .never
-        navigationController?.navigationBar.prefersLargeTitles = false
+    // MARK: - UI Setup
+    
+    private func setupUI() {
+        navigationItem.title = "Pets"
+        navigationItem.largeTitleDisplayMode = .always
+        navigationController?.navigationBar.prefersLargeTitles = true
+        
         view.backgroundColor = .systemBackground
         
-        // Добавляем переключатель режимов отображения
-        view.addSubview(displayModeSegmentedControl)
-        displayModeSegmentedControl.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(10)
+        view.addSubview(segmentedControl)
+        segmentedControl.snp.makeConstraints { make in
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(8)
             make.leading.trailing.equalToSuperview().inset(16)
-            make.height.equalTo(36)
+            make.height.equalTo(40)
         }
         
-        displayModeSegmentedControl.addTarget(self, action: #selector(displayModeChanged), for: .valueChanged)
+        view.addSubview(viewModeSegmentedControl)
+        viewModeSegmentedControl.snp.makeConstraints { make in
+            make.bottom.equalTo(view.safeAreaLayoutGuide).offset(-16)
+            make.leading.trailing.equalToSuperview().inset(16)
+            make.height.equalTo(40)
+        }
         
-        // Добавляем коллекцию
         view.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
-            make.top.equalTo(displayModeSegmentedControl.snp.bottom).offset(10)
-            make.bottom.equalTo(view.safeAreaLayoutGuide)
+            make.top.equalTo(segmentedControl.snp.bottom).offset(16)
             make.leading.trailing.equalToSuperview().inset(16)
+            make.bottom.equalTo(viewModeSegmentedControl.snp.top).offset(-16)
         }
         
-        // Добавляем карту
         view.addSubview(mapView)
         mapView.snp.makeConstraints { make in
-            make.top.equalTo(displayModeSegmentedControl.snp.bottom).offset(10)
-            make.bottom.equalTo(view.safeAreaLayoutGuide)
+            make.top.equalTo(segmentedControl.snp.bottom).offset(16)
             make.leading.trailing.equalToSuperview()
+            make.bottom.equalTo(viewModeSegmentedControl.snp.top).offset(-16)
         }
         
-        // Добавляем индикатор загрузки
+        view.addSubview(emptyView)
+        emptyView.snp.makeConstraints { make in
+            make.center.equalTo(collectionView)
+            make.width.equalToSuperview()
+        }
+        
+        emptyView.addSubview(emptyImageView)
+        emptyImageView.snp.makeConstraints { make in
+            make.top.equalToSuperview()
+            make.centerX.equalToSuperview()
+            make.width.height.equalTo(80)
+        }
+        
+        emptyView.addSubview(emptyLabel)
+        emptyLabel.snp.makeConstraints { make in
+            make.top.equalTo(emptyImageView.snp.bottom).offset(16)
+            make.centerX.equalToSuperview()
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.bottom.equalToSuperview()
+        }
+        
         view.addSubview(activityIndicator)
         activityIndicator.snp.makeConstraints { make in
             make.center.equalToSuperview()
         }
+        
+        view.addSubview(errorLabel)
+        errorLabel.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+            make.leading.trailing.equalToSuperview().inset(20)
+        }
+        
+        segmentedControl.addTarget(self, action: #selector(segmentedControlChanged), for: .valueChanged)
+        viewModeSegmentedControl.addTarget(self, action: #selector(viewModeChanged), for: .valueChanged)
     }
     
-    @objc private func displayModeChanged() {
-        displayMode = displayModeSegmentedControl.selectedSegmentIndex == 0 ? .list : .map
-    }
+    // MARK: - Actions
     
-    private func updateDisplayMode() {
-        switch displayMode {
-        case .list:
-            collectionView.isHidden = false
+    @objc private func segmentedControlChanged() {
+        if segmentedControl.selectedSegmentIndex == 0 {
+            viewModeSegmentedControl.isHidden = true
             mapView.isHidden = true
-        case .map:
-            collectionView.isHidden = true
+            collectionView.isHidden = false
+            isMapViewActive = false
+            fetchLostPets()
+        } else {
+            viewModeSegmentedControl.isHidden = false
+            if viewModeSegmentedControl.selectedSegmentIndex == 1 {
+                mapView.isHidden = false
+                collectionView.isHidden = true
+                isMapViewActive = true
+            } else {
+                mapView.isHidden = true
+                collectionView.isHidden = false
+                isMapViewActive = false
+            }
+            fetchFoundPets()
+        }
+    }
+    
+    @objc private func viewModeChanged() {
+        if viewModeSegmentedControl.selectedSegmentIndex == 0 {
+            mapView.isHidden = true
+            collectionView.isHidden = false
+            isMapViewActive = false
+        } else {
             mapView.isHidden = false
+            collectionView.isHidden = true
+            isMapViewActive = true
             updateMapAnnotations()
         }
     }
     
+    // MARK: - Data Fetching
+    
+    private func fetchLostPets() {
+        presenter.fetchLostPets()
+    }
+    
+    private func fetchFoundPets() {
+        presenter.fetchFoundPets()
+    }
+    
+    // MARK: - Map Annotations
+    
     private func updateMapAnnotations() {
-        // Удаляем старые аннотации
         mapView.removeAnnotations(mapView.annotations)
         
-        // Поскольку API не возвращает координаты, используем примерные координаты для демонстрации
-        for (index, pet) in petsArray.enumerated() {
-            let coordinate = defaultCoordinates[index % defaultCoordinates.count]
-            let annotation = PetAnnotation(pet: pet, coordinate: coordinate)
-            mapView.addAnnotation(annotation)
+        var annotations: [MKPointAnnotation] = []
+        
+        for pet in petsArray {
+            // Mock locations for demo (in a real app, use the actual location data)
+            let latitude = 43.22 + Double.random(in: -0.05...0.05)
+            let longitude = 76.85 + Double.random(in: -0.05...0.05)
+            
+            let annotation = MKPointAnnotation()
+            annotation.coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+            annotation.title = pet.name
+            annotation.subtitle = pet.species
+            
+            annotations.append(annotation)
         }
         
-        // Устанавливаем начальный регион карты для Казахстана
-        if !defaultCoordinates.isEmpty {
-            let coordinate = defaultCoordinates[0]
+        mapView.addAnnotations(annotations)
+        
+        if let firstAnnotation = annotations.first {
             let region = MKCoordinateRegion(
-                center: coordinate,
-                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                center: firstAnnotation.coordinate,
+                span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
             )
             mapView.setRegion(region, animated: true)
         }
     }
     
-    func fetchData() {
-        showLoading()
+    // MARK: - MainViewProtocol
+    
+    func updatePets(_ pets: [LostPet]) {
+        petsArray = pets
         
-        presenter.fetchLostPets { [weak self] pets in
-            guard let self = self else { return }
-            self.petsArray = pets
-            self.collectionView.reloadData()
+        if pets.isEmpty {
+            collectionView.isHidden = true
+            emptyView.isHidden = false
+        } else {
+            collectionView.isHidden = isMapViewActive
+            emptyView.isHidden = true
+            collectionView.reloadData()
             
-            if self.displayMode == .map {
-                self.updateMapAnnotations()
+            if isMapViewActive {
+                updateMapAnnotations()
             }
-            
-            self.hideLoading()
         }
     }
     
     func showLoading() {
-        activityIndicator.startAnimating()
         collectionView.isHidden = true
         mapView.isHidden = true
-        displayModeSegmentedControl.isEnabled = false
+        emptyView.isHidden = true
+        errorLabel.isHidden = true
+        activityIndicator.startAnimating()
     }
     
     func hideLoading() {
         activityIndicator.stopAnimating()
-        displayModeSegmentedControl.isEnabled = true
-        updateDisplayMode()
+        errorLabel.isHidden = true
+        
+        if petsArray.isEmpty {
+            emptyView.isHidden = false
+            collectionView.isHidden = true
+            mapView.isHidden = true
+        } else {
+            emptyView.isHidden = true
+            collectionView.isHidden = isMapViewActive
+            mapView.isHidden = !isMapViewActive
+        }
+    }
+    
+    func showError(message: String) {
+        errorLabel.text = message
+        errorLabel.isHidden = false
+        emptyView.isHidden = true
+        collectionView.isHidden = true
+        mapView.isHidden = true
+    }
+    
+    func showMapView() {
+        viewModeSegmentedControl.selectedSegmentIndex = 1
+        mapView.isHidden = false
+        collectionView.isHidden = true
+        isMapViewActive = true
+        updateMapAnnotations()
     }
 }
 
 // MARK: - UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout
+
 extension MainView: UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
@@ -186,7 +318,7 @@ extension MainView: UICollectionViewDataSource, UICollectionViewDelegate, UIColl
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: LosePetsCell.identifier, for: indexPath) as! LosePetsCell
-        cell.pet = petsArray[indexPath.item]
+        cell.item = petsArray[indexPath.item]
         return cell
     }
     
@@ -196,50 +328,6 @@ extension MainView: UICollectionViewDataSource, UICollectionViewDelegate, UIColl
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        // Передаем ID как строку
-        let id = petsArray[indexPath.item].id
-        presenter.didTapDetail(id: id)
-    }
-}
-
-// MARK: - MKMapViewDelegate
-extension MainView: MKMapViewDelegate {
-    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-        // Пропускаем аннотацию пользователя
-        guard !annotation.isKind(of: MKUserLocation.self) else { return nil }
-        guard let petAnnotation = annotation as? PetAnnotation else { return nil }
-        
-        let identifier = "PetAnnotation"
-        var annotationView: MKMarkerAnnotationView
-        
-        if let dequeuedView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView {
-            dequeuedView.annotation = annotation
-            annotationView = dequeuedView
-        } else {
-            annotationView = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
-            annotationView.canShowCallout = true
-            annotationView.calloutOffset = CGPoint(x: -5, y: 5)
-            
-            // Добавляем кнопку для показа деталей
-            let button = UIButton(type: .detailDisclosure)
-            annotationView.rightCalloutAccessoryView = button
-        }
-        
-        // Устанавливаем цвет маркера в зависимости от вида животного
-        let species = petAnnotation.pet.species.lowercased()
-        if species == "dog" {
-            annotationView.markerTintColor = .systemBlue
-        } else if species == "cat" {
-            annotationView.markerTintColor = .systemOrange
-        } else {
-            annotationView.markerTintColor = .systemGreen
-        }
-        
-        return annotationView
-    }
-    
-    func mapView(_ mapView: MKMapView, annotationView view: MKAnnotationView, calloutAccessoryControlTapped control: UIControl) {
-        guard let annotation = view.annotation as? PetAnnotation else { return }
-        presenter.didTapDetail(id: annotation.pet.id)
+        presenter.didTapDetail(id: petsArray[indexPath.item].id)
     }
 }

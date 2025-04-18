@@ -11,64 +11,82 @@ class LosePetsCell: UICollectionViewCell {
         imageView.clipsToBounds = true
         imageView.layer.cornerRadius = 5
         imageView.backgroundColor = .systemGray6
-        imageView.image = UIImage(systemName: "pawprint.fill")
-        imageView.tintColor = .systemGray3
         return imageView
     }()
     
-    private let infoLabel: UILabel = {
+    private let nameLabel: UILabel = {
         let label = UILabel()
         label.font = .systemFont(ofSize: 17, weight: .bold)
         label.textColor = .label
         return label
     }()
     
-    private let breedLabel: UILabel = {
+    private let speciesLabel: UILabel = {
         let label = UILabel()
         label.font = .systemFont(ofSize: 13, weight: .regular)
         label.textColor = .secondaryLabel
         return label
     }()
     
-    private let statusLabel: UILabel = {
+    private let genderLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 13, weight: .medium)
-        label.textColor = .systemRed
+        label.font = .systemFont(ofSize: 13, weight: .regular)
+        label.textColor = .secondaryLabel
+        return label
+    }()
+    
+    private let ageLabel: UILabel = {
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 13, weight: .regular)
+        label.textColor = .secondaryLabel
         return label
     }()
 
-    var pet: LostPet? {
+    var item: LostPet? {
         didSet {
-            if let pet = pet {
-                // Загрузка изображения, если оно доступно
-                if let mainPhotoURL = pet.mainPhotoURL?.absoluteString {
-                    loadImage(from: mainPhotoURL, into: petImageView)
+            if let item = item {
+                nameLabel.text = item.name
+                speciesLabel.text = "Type: \(item.species.capitalized)"
+                
+                if let age = item.age {
+                    ageLabel.text = "Age: \(age) year\(age > 1 ? "s" : "")"
+                } else {
+                    ageLabel.text = "Age: unknown"
+                }
+                
+                if let gender = item.gender {
+                    genderLabel.text = "Gender: \(gender.capitalized)"
+                } else {
+                    genderLabel.text = "Gender: unknown"
+                }
+                
+                if let imageUrl = item.imageUrl {
+                    loadImage(from: imageUrl)
                 } else {
                     petImageView.image = UIImage(systemName: "pawprint.fill")
                     petImageView.tintColor = .systemGray3
                 }
-                
-                infoLabel.text = pet.name
-                breedLabel.text = "Вид: \(pet.species), Порода: \(pet.breed.isEmpty ? "Не указана" : pet.breed)"
-                
-                if let lostDate = pet.lost_date {
-                    statusLabel.text = "Потерян: \(formattedDate(from: lostDate))"
-                } else {
-                    statusLabel.text = "Статус: \(pet.status)"
-                }
             }
-            
             setupView()
         }
     }
 
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupView()
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
     override func prepareForReuse() {
         super.prepareForReuse()
-        petImageView.image = UIImage(systemName: "pawprint.fill")
-        petImageView.tintColor = .systemGray3
-        infoLabel.text = nil
-        breedLabel.text = nil
-        statusLabel.text = nil
+        petImageView.image = nil
+        nameLabel.text = nil
+        speciesLabel.text = nil
+        genderLabel.text = nil
+        ageLabel.text = nil
     }
 
     private func setupView() {
@@ -82,48 +100,57 @@ class LosePetsCell: UICollectionViewCell {
             make.height.equalTo(70)
         }
         
-        addSubview(infoLabel)
-        infoLabel.snp.makeConstraints { make in
+        addSubview(nameLabel)
+        nameLabel.snp.makeConstraints { make in
             make.top.equalToSuperview().offset(10)
             make.leading.equalTo(petImageView.snp.trailing).offset(10)
+            make.trailing.equalToSuperview().inset(10)
         }
         
-        addSubview(breedLabel)
-        breedLabel.snp.makeConstraints { make in
-            make.top.equalTo(infoLabel.snp.bottom).offset(5)
-            make.leading.equalTo(infoLabel)
+        addSubview(speciesLabel)
+        speciesLabel.snp.makeConstraints { make in
+            make.top.equalTo(nameLabel.snp.bottom).offset(5)
+            make.leading.equalTo(nameLabel)
+            make.trailing.equalToSuperview().inset(10)
         }
         
-        addSubview(statusLabel)
-        statusLabel.snp.makeConstraints { make in
-            make.top.equalTo(breedLabel.snp.bottom).offset(5)
-            make.leading.equalTo(breedLabel)
+        addSubview(ageLabel)
+        ageLabel.snp.makeConstraints { make in
+            make.top.equalTo(speciesLabel.snp.bottom).offset(5)
+            make.leading.equalTo(speciesLabel)
+            make.trailing.equalToSuperview().inset(10)
+        }
+        
+        addSubview(genderLabel)
+        genderLabel.snp.makeConstraints { make in
+            make.top.equalTo(ageLabel.snp.bottom).offset(5)
+            make.leading.equalTo(ageLabel)
+            make.trailing.equalToSuperview().inset(10)
+            make.bottom.lessThanOrEqualToSuperview().inset(10)
         }
     }
 
-    func loadImage(from url: String, into imageView: UIImageView) {
-        guard let imageURL = URL(string: url) else { return }
+    func loadImage(from url: String) {
+        guard let imageURL = URL(string: url) else {
+            petImageView.image = UIImage(systemName: "pawprint.fill")
+            petImageView.tintColor = .systemGray3
+            return
+        }
 
-        let task = URLSession.shared.dataTask(with: imageURL) { data, response, error in
-            guard let data = data, error == nil, let image = UIImage(data: data) else { return }
+        let task = URLSession.shared.dataTask(with: imageURL) { [weak self] data, response, error in
+            guard let self = self, let data = data, error == nil,
+                  let image = UIImage(data: data) else {
+                DispatchQueue.main.async {
+                    self?.petImageView.image = UIImage(systemName: "pawprint.fill")
+                    self?.petImageView.tintColor = .systemGray3
+                }
+                return
+            }
 
             DispatchQueue.main.async {
-                imageView.image = image
+                self.petImageView.image = image
             }
         }
         task.resume()
-    }
-    
-    private func formattedDate(from dateString: String) -> String {
-        let inputFormatter = DateFormatter()
-        inputFormatter.dateFormat = "yyyy-MM-dd"
-        
-        guard let date = inputFormatter.date(from: dateString) else {
-            return dateString
-        }
-        
-        let outputFormatter = DateFormatter()
-        outputFormatter.dateFormat = "dd.MM.yyyy"
-        return outputFormatter.string(from: date)
     }
 }

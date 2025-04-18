@@ -1,324 +1,302 @@
-//
-//  ProfileView.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 20.10.2024.
-//
-
-//
-//  ProfileView.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 20.10.2024.
-//
-
 import UIKit
+import SnapKit
 
-class ProfileView: UIViewController {
+protocol ProfileViewProtocol: AnyObject {
+    func configure(with model: UserProfile)
+    func showLoading()
+    func hideLoading()
+    func showError(message: String)
+    func showSuccess(message: String)
+    func navigateToLogin()
+}
+
+class ProfileView: UIViewController, ProfileViewProtocol {
     
-    private let presenter = ProfilePresenter()
+    private let presenter: ProfilePresenterProtocol = ProfilePresenter()
     
-    private lazy var profileImage: UIImageView = {
+    private let scrollView = UIScrollView()
+    private let contentView = UIView()
+    
+    private let profileImage: UIImageView = {
         let image = UIImageView()
         image.contentMode = .scaleAspectFill
-        image.image = UIImage(named: "default")
+        image.image = UIImage(systemName: "person.circle.fill")
+        image.tintColor = .systemGray3
         image.clipsToBounds = true
-        image.layer.cornerRadius = 75
+        image.layer.cornerRadius = 50
         return image
     }()
-    private lazy var loadingIndicator: UIActivityIndicatorView = {
+    
+    private let loadingIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .large)
-        indicator.translatesAutoresizingMaskIntoConstraints = false
         indicator.hidesWhenStopped = true
         indicator.color = .gray
         return indicator
     }()
-    private lazy var fullNameLabel: UILabel = {
+    
+    private let emailLabel: UILabel = {
         let label = UILabel()
-        label.font = UIFont.systemFont(ofSize: 30, weight: .medium)
+        label.font = .systemFont(ofSize: 16, weight: .regular)
+        label.textColor = .secondaryLabel
+        label.textAlignment = .center
         return label
     }()
     
-    private lazy var phoneNumber: UILabel = {
-        let label = UILabel()
-        label.font = UIFont.systemFont(ofSize: 20, weight: .medium)
-        return label
+    private let fullNameTextField: UITextField = {
+        let textField = UITextField()
+        textField.placeholder = "Full Name"
+        textField.font = .systemFont(ofSize: 18, weight: .medium)
+        textField.borderStyle = .roundedRect
+        textField.layer.cornerRadius = 12
+        textField.layer.borderWidth = 1
+        textField.layer.borderColor = UIColor.systemGray5.cgColor
+        textField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: textField.frame.height))
+        textField.leftViewMode = .always
+        return textField
     }()
     
-    private lazy var editProfileButton: UIButton = {
+    private let phoneTextField: UITextField = {
+        let textField = UITextField()
+        textField.placeholder = "Phone Number"
+        textField.font = .systemFont(ofSize: 18, weight: .medium)
+        textField.borderStyle = .roundedRect
+        textField.layer.cornerRadius = 12
+        textField.layer.borderWidth = 1
+        textField.layer.borderColor = UIColor.systemGray5.cgColor
+        textField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: textField.frame.height))
+        textField.leftViewMode = .always
+        textField.keyboardType = .phonePad
+        return textField
+    }()
+    
+    private let passwordTextField: UITextField = {
+        let textField = UITextField()
+        textField.placeholder = "New Password (optional)"
+        textField.font = .systemFont(ofSize: 18, weight: .medium)
+        textField.borderStyle = .roundedRect
+        textField.layer.cornerRadius = 12
+        textField.layer.borderWidth = 1
+        textField.layer.borderColor = UIColor.systemGray5.cgColor
+        textField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: textField.frame.height))
+        textField.leftViewMode = .always
+        textField.isSecureTextEntry = true
+        return textField
+    }()
+    
+    private let editProfileButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("Выбрать фотографию", for: .normal)
-        button.backgroundColor = .systemGray5
+        button.setTitle("Update Profile", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
+        button.backgroundColor = .systemGreen
+        button.tintColor = .white
         button.layer.cornerRadius = 12
-        button.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-        button.setTitleColor(UIColor.label, for: .normal)
-        
-        let cameraIcon = UIImage(systemName: "arrow.triangle.2.circlepath.camera")
-        button.setImage(cameraIcon, for: .normal)
-        
-        button.contentHorizontalAlignment = .leading
-        button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 0)
-        button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 0)
-        
-        button.addTarget(self, action: #selector(editProfileImage), for: .touchUpInside)
-        
         return button
     }()
     
-    private lazy var aboutButton: UIButton = {
+    private let logoutButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("О приложений", for: .normal)
-        button.backgroundColor = .systemGray5
+        button.setTitle("Log Out", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
+        button.backgroundColor = .systemGray4
+        button.tintColor = .white
         button.layer.cornerRadius = 12
-        button.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-        button.setTitleColor(UIColor.label, for: .normal)
-        
-        let infoIcon = UIImage(systemName: "info.square")
-        button.setImage(infoIcon, for: .normal)
-        
-        button.contentHorizontalAlignment = .leading
-        button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 0)
-        button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 15, bottom: 0, right: 0)
-        
-        button.addTarget(self, action: #selector(showAboutApplication), for: .touchUpInside)
-        
         return button
     }()
     
-    private lazy var rateAppButton: UIButton = {
+    private let deleteAccountButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("Оценить приложение", for: .normal)
-        button.backgroundColor = .systemGray5
+        button.setTitle("Delete Account", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
+        button.backgroundColor = .systemRed
+        button.tintColor = .white
         button.layer.cornerRadius = 12
-        button.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-        button.setTitleColor(UIColor.label, for: .normal)
-        
-        let rateIcon = UIImage(systemName: "star")
-        button.setImage(rateIcon, for: .normal)
-        
-        button.contentHorizontalAlignment = .leading
-        button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 0)
-        button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 0)
-        
-        button.addTarget(self, action: #selector(rateApp), for: .touchUpInside)
-        
         return button
     }()
     
-    private lazy var shareAppButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.setTitle("Рассказать другу", for: .normal)
-        button.backgroundColor = .systemGray5
-        button.layer.cornerRadius = 12
-        button.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .medium)
-        button.setTitleColor(UIColor.label, for: .normal)
-        
-        let shareIcon = UIImage(systemName: "square.and.arrow.up")
-        button.setImage(shareIcon, for: .normal)
-        
-        button.contentHorizontalAlignment = .leading
-        button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 0)
-        button.titleEdgeInsets = UIEdgeInsets(top: 0, left: 15, bottom: 0, right: 0)
-        
-        button.addTarget(self, action: #selector(shareApp), for: .touchUpInside)
-        
-        return button
-    }()
-    
-    private lazy var logoutButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.setTitle("Выйти", for: .normal)
-        button.setTitleColor(.red, for: .normal)
-        button.addTarget(self, action: #selector(logout), for: .touchUpInside)
-        return button
-    }()
-    
-    private lazy var notificationsSwitch: UISwitch = {
-        let notificationSwitch = UISwitch()
-        notificationSwitch.isOn = true
-        notificationSwitch.addTarget(self, action: #selector(toggleNotifications), for: .valueChanged)
-        return notificationSwitch
-    }()
-    
-    private lazy var notificationsLabel: UILabel = {
-        let label = UILabel()
-        label.text = "Получать уведомление"
-        label.font = UIFont.systemFont(ofSize: 18)
-        return label
-    }()
-    
-    private lazy var notificationsView: UIView = {
-        let view = UIView()
-        view.backgroundColor = .systemGray5
-        view.layer.cornerRadius = 16
-        return view
-    }()
-
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        presenter.view = self
-        fetchData()
+        setupActions()
+        (presenter as? ProfilePresenter)?.view = self
+        hideKeyboardWhenTappedAround()
     }
     
-    private func setupUI() {
-        [profileImage, fullNameLabel, phoneNumber, editProfileButton, aboutButton, rateAppButton, shareAppButton, logoutButton, loadingIndicator, notificationsView, notificationsLabel, notificationsSwitch].forEach({
-            $0.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview($0)
-        })
-        
-        NSLayoutConstraint.activate([
-            
-            loadingIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            loadingIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            // Profile image
-            profileImage.topAnchor.constraint(equalTo: view.topAnchor, constant: 100),
-            profileImage.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            profileImage.heightAnchor.constraint(equalToConstant: 150),
-            profileImage.widthAnchor.constraint(equalToConstant: 150),
-            
-            // Full name
-            fullNameLabel.topAnchor.constraint(equalTo: profileImage.bottomAnchor, constant: 10),
-            fullNameLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            
-            // Phone number
-            phoneNumber.topAnchor.constraint(equalTo: fullNameLabel.bottomAnchor, constant: 5),
-            phoneNumber.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            
-            // Edit Profile Image button
-            editProfileButton.topAnchor.constraint(equalTo: phoneNumber.bottomAnchor, constant: 20),
-            editProfileButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            editProfileButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            editProfileButton.heightAnchor.constraint(equalToConstant: 40),
-            
-            // About button
-            aboutButton.topAnchor.constraint(equalTo: editProfileButton.bottomAnchor, constant: 5),
-            aboutButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            aboutButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            aboutButton.heightAnchor.constraint(equalToConstant: 40),
-            
-            // Rate App button
-            rateAppButton.topAnchor.constraint(equalTo: aboutButton.bottomAnchor, constant: 5),
-            rateAppButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            rateAppButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            rateAppButton.heightAnchor.constraint(equalToConstant: 40),
-            
-            // Share App button
-            shareAppButton.topAnchor.constraint(equalTo: rateAppButton.bottomAnchor, constant: 5),
-            shareAppButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            shareAppButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            shareAppButton.heightAnchor.constraint(equalToConstant: 40),
-            
-            // Notifications view
-            notificationsView.bottomAnchor.constraint(equalTo: logoutButton.topAnchor, constant: -20),
-            notificationsView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            notificationsView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            notificationsView.heightAnchor.constraint(equalToConstant: 50),
-            
-            // Notifications label
-            notificationsLabel.centerYAnchor.constraint(equalTo: notificationsView.centerYAnchor),
-            notificationsLabel.leadingAnchor.constraint(equalTo: notificationsView.leadingAnchor, constant: 20),
-            
-            // Notifications switch
-            notificationsSwitch.centerYAnchor.constraint(equalTo: notificationsView.centerYAnchor),
-            notificationsSwitch.trailingAnchor.constraint(equalTo: notificationsView.trailingAnchor, constant: -20),
-            
-            // Logout button
-            logoutButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -30),
-            logoutButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-        ])
-    }
-    
-    private func fetchData() {
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
         presenter.fetchProfile()
     }
     
-    func configure(model: UserProfile) {
-        fullNameLabel.text = "\(model.firstName) \(model.lastName)"
-        phoneNumber.text = model.phone
-    }
-
-    @objc private func editProfileImage() {
-        // Open image picker to change the profile image
-        let imagePicker = UIImagePickerController()
-        imagePicker.delegate = self
-        imagePicker.allowsEditing = true
-        present(imagePicker, animated: true, completion: nil)
-    }
-
-    @objc private func logout() {
-        UserDefaults.standard.removeObject(forKey: LoginView.isActive)
-        UserDefaults.standard.removeObject(forKey: LoginInViewModel.tokenIdentifier)
+    private func setupUI() {
+        title = "Profile"
+        view.backgroundColor = .systemBackground
         
-        if let window = UIApplication.shared.keyWindow {
-                // Создаем новый корневой контроллер с экраном SignInView
+        view.addSubview(scrollView)
+        scrollView.addSubview(contentView)
+        
+        scrollView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+        
+        contentView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+            make.width.equalTo(scrollView)
+        }
+        
+        [profileImage, emailLabel, fullNameTextField, phoneTextField,
+         passwordTextField, editProfileButton, logoutButton, deleteAccountButton].forEach {
+            contentView.addSubview($0)
+        }
+        
+        view.addSubview(loadingIndicator)
+        
+        // Profile Image
+        profileImage.snp.makeConstraints { make in
+            make.top.equalToSuperview().offset(30)
+            make.centerX.equalToSuperview()
+            make.width.height.equalTo(100)
+        }
+        
+        // Email Label
+        emailLabel.snp.makeConstraints { make in
+            make.top.equalTo(profileImage.snp.bottom).offset(8)
+            make.centerX.equalToSuperview()
+            make.leading.trailing.equalToSuperview().inset(20)
+        }
+        
+        // Full Name TextField
+        fullNameTextField.snp.makeConstraints { make in
+            make.top.equalTo(emailLabel.snp.bottom).offset(30)
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(50)
+        }
+        
+        // Phone TextField
+        phoneTextField.snp.makeConstraints { make in
+            make.top.equalTo(fullNameTextField.snp.bottom).offset(15)
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(50)
+        }
+        
+        // Password TextField
+        passwordTextField.snp.makeConstraints { make in
+            make.top.equalTo(phoneTextField.snp.bottom).offset(15)
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(50)
+        }
+        
+        // Edit Profile Button
+        editProfileButton.snp.makeConstraints { make in
+            make.top.equalTo(passwordTextField.snp.bottom).offset(30)
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(50)
+        }
+        
+        // Logout Button
+        logoutButton.snp.makeConstraints { make in
+            make.top.equalTo(editProfileButton.snp.bottom).offset(15)
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(50)
+        }
+        
+        // Delete Account Button
+        deleteAccountButton.snp.makeConstraints { make in
+            make.top.equalTo(logoutButton.snp.bottom).offset(15)
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(50)
+            make.bottom.equalToSuperview().inset(30)
+        }
+        
+        // Loading Indicator
+        loadingIndicator.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+        }
+    }
+    
+    private func setupActions() {
+        editProfileButton.addTarget(self, action: #selector(updateProfileTapped), for: .touchUpInside)
+        logoutButton.addTarget(self, action: #selector(logoutTapped), for: .touchUpInside)
+        deleteAccountButton.addTarget(self, action: #selector(deleteAccountTapped), for: .touchUpInside)
+    }
+    
+    @objc private func updateProfileTapped() {
+        guard let fullName = fullNameTextField.text, !fullName.isEmpty,
+              let phone = phoneTextField.text, !phone.isEmpty else {
+            showError(message: "Please fill in required fields")
+            return
+        }
+        
+        let password = passwordTextField.text?.isEmpty == true ? nil : passwordTextField.text
+        presenter.updateProfile(fullName: fullName, phone: phone, password: password)
+    }
+    
+    @objc private func logoutTapped() {
+        presenter.logout()
+    }
+    
+    @objc private func deleteAccountTapped() {
+        let alert = UIAlertController(
+            title: "Delete Account",
+            message: "Are you sure you want to delete your account? This action cannot be undone.",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            self?.presenter.deleteAccount()
+        })
+        
+        present(alert, animated: true)
+    }
+    
+    // MARK: - ProfileViewProtocol
+    
+    func configure(with model: UserProfile) {
+        emailLabel.text = model.email
+        fullNameTextField.text = model.fullName
+        phoneTextField.text = model.phone
+    }
+    
+    func showLoading() {
+        DispatchQueue.main.async { [weak self] in
+            self?.loadingIndicator.startAnimating()
+            self?.view.isUserInteractionEnabled = false
+        }
+    }
+    
+    func hideLoading() {
+        DispatchQueue.main.async { [weak self] in
+            self?.loadingIndicator.stopAnimating()
+            self?.view.isUserInteractionEnabled = true
+        }
+    }
+    
+    func showError(message: String) {
+        DispatchQueue.main.async { [weak self] in
+            let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self?.present(alert, animated: true)
+        }
+    }
+    
+    func showSuccess(message: String) {
+        DispatchQueue.main.async { [weak self] in
+            let alert = UIAlertController(title: "Success", message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self?.present(alert, animated: true)
+        }
+    }
+    
+    func navigateToLogin() {
+        DispatchQueue.main.async {
+            if let window = UIApplication.shared.windows.first {
                 let signInViewController = SignInView()
                 let navigationController = UINavigationController(rootViewController: signInViewController)
                 
-                // Меняем корневой контроллер
                 window.rootViewController = navigationController
                 window.makeKeyAndVisible()
+                
+                UIView.transition(with: window, duration: 0.3, options: .transitionCrossDissolve, animations: {}, completion: nil)
             }
-    }
-    func showLoading() {
-        DispatchQueue.main.async {
-            [self.profileImage, self.fullNameLabel, self.phoneNumber, self.editProfileButton, self.aboutButton, self.rateAppButton, self.shareAppButton, self.logoutButton, self.loadingIndicator, self.notificationsView, self.notificationsLabel, self.notificationsSwitch].forEach { view in
-                view.isHidden = true
-            }
-            
-            self.loadingIndicator.startAnimating()
-            self.view.isUserInteractionEnabled = false
         }
-    }
-
-    func hideLoading() {
-        DispatchQueue.main.async {
-            
-            [self.profileImage, self.fullNameLabel, self.phoneNumber, self.editProfileButton, self.aboutButton, self.rateAppButton, self.shareAppButton, self.logoutButton, self.loadingIndicator, self.notificationsView, self.notificationsLabel, self.notificationsSwitch].forEach { view in
-                view.isHidden = false
-            }
-            self.loadingIndicator.stopAnimating()
-            self.view.isUserInteractionEnabled = true
-        }
-    }
-    
-    @objc private func toggleNotifications() {
-        if notificationsSwitch.isOn {
-            print("Notifications Enabled")
-        } else {
-            print("Notifications Disabled")
-        }
-    }
-
-    @objc private func showAboutApplication() {
-        // Show about application details
-        let alertController = UIAlertController(title: "About Application", message: "This is the about section of the application.", preferredStyle: .alert)
-        alertController.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-        present(alertController, animated: true, completion: nil)
-    }
-    
-    @objc private func rateApp() {
-        // Add your rate app logic here
-        print("Rate app tapped")
-    }
-    
-    @objc private func shareApp() {
-        // Add your share app logic here
-        print("Share app tapped")
-    }
-}
-
-// MARK: - UIImagePickerControllerDelegate, UINavigationControllerDelegate
-extension ProfileView: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-    
-    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        if let selectedImage = info[.editedImage] as? UIImage {
-            profileImage.image = selectedImage
-        }
-        picker.dismiss(animated: true, completion: nil)
-    }
-    
-    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-        picker.dismiss(animated: true, completion: nil)
     }
 }

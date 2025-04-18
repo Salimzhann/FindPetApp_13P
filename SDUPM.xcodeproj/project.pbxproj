@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		040907B22DB2A08F00862F6A /* LostPet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 040907B12DB2A08F00862F6A /* LostPet.swift */; };
 		040907B42DB2A11400862F6A /* PetAnnotation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 040907B32DB2A11400862F6A /* PetAnnotation.swift */; };
+		040907B92DB2B9D700862F6A /* MainViewProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 040907B82DB2B9BF00862F6A /* MainViewProtocol.swift */; };
+		040907BB2DB2B9EA00862F6A /* MainPresenterProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 040907BA2DB2B9DC00862F6A /* MainPresenterProtocol.swift */; };
 		044C3BAE2DA4DEAD004D9745 /* FindPetPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044C3BAD2DA4DEAD004D9745 /* FindPetPresenter.swift */; };
 		044C3BB02DA4ED49004D9745 /* PetDetailCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044C3BAF2DA4ED49004D9745 /* PetDetailCell.swift */; };
 		044C3BB42DA7EF0B004D9745 /* ConfirmEmailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044C3BB32DA7EF0B004D9745 /* ConfirmEmailViewController.swift */; };
@@ -51,6 +53,8 @@
 /* Begin PBXFileReference section */
 		040907B12DB2A08F00862F6A /* LostPet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LostPet.swift; sourceTree = "<group>"; };
 		040907B32DB2A11400862F6A /* PetAnnotation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetAnnotation.swift; sourceTree = "<group>"; };
+		040907B82DB2B9BF00862F6A /* MainViewProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewProtocol.swift; sourceTree = "<group>"; };
+		040907BA2DB2B9DC00862F6A /* MainPresenterProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainPresenterProtocol.swift; sourceTree = "<group>"; };
 		044C3BAD2DA4DEAD004D9745 /* FindPetPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindPetPresenter.swift; sourceTree = "<group>"; };
 		044C3BAF2DA4ED49004D9745 /* PetDetailCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetDetailCell.swift; sourceTree = "<group>"; };
 		044C3BB32DA7EF0B004D9745 /* ConfirmEmailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmEmailViewController.swift; sourceTree = "<group>"; };
@@ -103,6 +107,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		040907B72DB2B9A100862F6A /* Protocols */ = {
+			isa = PBXGroup;
+			children = (
+				040907BA2DB2B9DC00862F6A /* MainPresenterProtocol.swift */,
+				040907B82DB2B9BF00862F6A /* MainViewProtocol.swift */,
+			);
+			path = Protocols;
+			sourceTree = "<group>";
+		};
 		045000292D9C0423004EE34A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -233,9 +246,9 @@
 				045000312D9C080D004EE34A /* MyPets */,
 				045000302D9C0802004EE34A /* FindPet */,
 				0450002F2D9C07EE004EE34A /* Profile */,
-				19261CC72CD5160400848699 /* Main */,
 				19213FD72CC4E9E8006D8BE1 /* TapBarNavigation */,
 				19213FD62CC4E4B1006D8BE1 /* RegistrationViews */,
+				19261CC72CD5160400848699 /* Main */,
 			);
 			path = Modules;
 			sourceTree = "<group>";
@@ -283,6 +296,7 @@
 		19261CC72CD5160400848699 /* Main */ = {
 			isa = PBXGroup;
 			children = (
+				040907B72DB2B9A100862F6A /* Protocols */,
 				19213FD42CC4E4A7006D8BE1 /* MainView.swift */,
 				0450003F2D9C2FC1004EE34A /* SubModule */,
 				0450003C2D9C2879004EE34A /* Presenter */,
@@ -380,8 +394,10 @@
 				044C3BBC2DAA153F004D9745 /* MyPetDetailViewController.swift in Sources */,
 				044C3BBA2DA914A1004D9745 /* FoundPetViewController.swift in Sources */,
 				19213FB82CC3C04B006D8BE1 /* SignInView.swift in Sources */,
+				040907B92DB2B9D700862F6A /* MainViewProtocol.swift in Sources */,
 				044C3BCB2DAE15B4004D9745 /* MyPetResponse.swift in Sources */,
 				044C3BB42DA7EF0B004D9745 /* ConfirmEmailViewController.swift in Sources */,
+				040907BB2DB2B9EA00862F6A /* MainPresenterProtocol.swift in Sources */,
 				19213FDA2CC4EBFD006D8BE1 /* SignInViewModel.swift in Sources */,
 				19213FB42CC3C04B006D8BE1 /* AppDelegate.swift in Sources */,
 				19213FCA2CC3C2B6006D8BE1 /* LoginView.swift in Sources */,

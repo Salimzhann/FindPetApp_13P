@@ -1,36 +1,21 @@
-//
-//  ProfileModel.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 11.04.2025.
-//
-
 import Foundation
 
-
-struct UserProfile: Decodable {
+struct UserProfile: Codable {
     let email: String
-    let firstName: String
-    let lastName: String
+    let fullName: String
     let phone: String
-    let id: String
+    let id: Int
+    let isActive: Bool
     let isVerified: Bool
     let createdAt: String
-    let petsCount: Int
-    let lostPetsCount: Int
-    let foundPetsCount: Int
     
-    // Преобразование ключей из snake_case в camelCase
     enum CodingKeys: String, CodingKey {
         case email
-        case firstName = "first_name"
-        case lastName = "last_name"
+        case fullName = "full_name"
         case phone
         case id
+        case isActive = "is_active"
         case isVerified = "is_verified"
         case createdAt = "created_at"
-        case petsCount = "pets_count"
-        case lostPetsCount = "lost_pets_count"
-        case foundPetsCount = "found_pets_count"
     }
 }

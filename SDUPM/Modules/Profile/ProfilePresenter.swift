@@ -1,29 +1,76 @@
-//
-//  ProfilePresenter.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 11.04.2025.
-//
-
 import UIKit
 
+protocol ProfilePresenterProtocol: AnyObject {
+    func fetchProfile()
+    func updateProfile(fullName: String, phone: String, password: String?)
+    func deleteAccount()
+    func logout()
+}
 
-class ProfilePresenter {
+class ProfilePresenter: ProfilePresenterProtocol {
     
-    weak var view: ProfileView?
+    weak var view: ProfileViewProtocol?
     
     private let provider = NetworkServiceProvider()
     
     func fetchProfile() {
         view?.showLoading()
         provider.fetchUserProfile { [weak self] model in
-            guard let model = model else {
-                return
-            }
             DispatchQueue.main.async {
-                self?.view?.configure(model: model)
-                self?.view?.hideLoading()
+                guard let self = self else { return }
+                
+                if let model = model {
+                    self.view?.configure(with: model)
+                } else {
+                    self.view?.showError(message: "Failed to load profile data")
+                }
+                
+                self.view?.hideLoading()
             }
         }
+    }
+    
+    func updateProfile(fullName: String, phone: String, password: String?) {
+        view?.showLoading()
+        
+        provider.updateUserProfile(fullName: fullName, phone: phone, password: password) { [weak self] success, message in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                
+                self.view?.hideLoading()
+                
+                if success {
+                    self.view?.showSuccess(message: "Profile updated successfully")
+                    self.fetchProfile()
+                } else {
+                    self.view?.showError(message: message ?? "Failed to update profile")
+                }
+            }
+        }
+    }
+    
+    func deleteAccount() {
+        view?.showLoading()
+        
+        provider.deleteUserAccount { [weak self] success, message in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                
+                self.view?.hideLoading()
+                
+                if success {
+                    self.logout()
+                } else {
+                    self.view?.showError(message: message ?? "Failed to delete account")
+                }
+            }
+        }
+    }
+    
+    func logout() {
+        UserDefaults.standard.removeObject(forKey: LoginView.isActive)
+        UserDefaults.standard.removeObject(forKey: LoginInViewModel.tokenIdentifier)
+        
+        view?.navigateToLogin()
     }
 }
