@@ -10,42 +10,65 @@ class LosePetsCell: UICollectionViewCell {
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
         imageView.layer.cornerRadius = 5
+        imageView.backgroundColor = .systemGray6
+        imageView.image = UIImage(systemName: "pawprint.fill")
+        imageView.tintColor = .systemGray3
         return imageView
     }()
+    
     private let infoLabel: UILabel = {
         let label = UILabel()
         label.font = .systemFont(ofSize: 17, weight: .bold)
         label.textColor = .label
         return label
     }()
+    
     private let breedLabel: UILabel = {
         let label = UILabel()
         label.font = .systemFont(ofSize: 13, weight: .regular)
         label.textColor = .secondaryLabel
         return label
     }()
-    private let sexLabel: UILabel = {
+    
+    private let statusLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 13, weight: .regular)
-        label.textColor = .secondaryLabel
+        label.font = .systemFont(ofSize: 13, weight: .medium)
+        label.textColor = .systemRed
         return label
     }()
 
-    var item: LostPet? {
+    var pet: LostPet? {
         didSet {
-            loadImage(from: item?.imageUrl ?? "", into: petImageView)
-            infoLabel.text = "\(item?.name ?? ""), \(item?.age ?? 1) лет"
-            breedLabel.text = "Category: \(item?.species ?? "")"
-            sexLabel.text = "Gender: \(item?.gender ?? "")"
+            if let pet = pet {
+                // Загрузка изображения, если оно доступно
+                if let mainPhotoURL = pet.mainPhotoURL?.absoluteString {
+                    loadImage(from: mainPhotoURL, into: petImageView)
+                } else {
+                    petImageView.image = UIImage(systemName: "pawprint.fill")
+                    petImageView.tintColor = .systemGray3
+                }
+                
+                infoLabel.text = pet.name
+                breedLabel.text = "Вид: \(pet.species), Порода: \(pet.breed.isEmpty ? "Не указана" : pet.breed)"
+                
+                if let lostDate = pet.lost_date {
+                    statusLabel.text = "Потерян: \(formattedDate(from: lostDate))"
+                } else {
+                    statusLabel.text = "Статус: \(pet.status)"
+                }
+            }
+            
             setupView()
         }
     }
 
     override func prepareForReuse() {
         super.prepareForReuse()
-        petImageView.image = nil
+        petImageView.image = UIImage(systemName: "pawprint.fill")
+        petImageView.tintColor = .systemGray3
         infoLabel.text = nil
         breedLabel.text = nil
+        statusLabel.text = nil
     }
 
     private func setupView() {
@@ -55,7 +78,8 @@ class LosePetsCell: UICollectionViewCell {
         addSubview(petImageView)
         petImageView.snp.makeConstraints { make in
             make.top.leading.bottom.equalToSuperview().inset(10)
-            make.width.equalTo(120)
+            make.width.equalTo(70)
+            make.height.equalTo(70)
         }
         
         addSubview(infoLabel)
@@ -70,8 +94,8 @@ class LosePetsCell: UICollectionViewCell {
             make.leading.equalTo(infoLabel)
         }
         
-        addSubview(sexLabel)
-        sexLabel.snp.makeConstraints { make in
+        addSubview(statusLabel)
+        statusLabel.snp.makeConstraints { make in
             make.top.equalTo(breedLabel.snp.bottom).offset(5)
             make.leading.equalTo(breedLabel)
         }
@@ -88,5 +112,18 @@ class LosePetsCell: UICollectionViewCell {
             }
         }
         task.resume()
+    }
+    
+    private func formattedDate(from dateString: String) -> String {
+        let inputFormatter = DateFormatter()
+        inputFormatter.dateFormat = "yyyy-MM-dd"
+        
+        guard let date = inputFormatter.date(from: dateString) else {
+            return dateString
+        }
+        
+        let outputFormatter = DateFormatter()
+        outputFormatter.dateFormat = "dd.MM.yyyy"
+        return outputFormatter.string(from: date)
     }
 }

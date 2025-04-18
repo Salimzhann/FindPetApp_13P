@@ -52,7 +52,7 @@ struct NetworkService {
 class NetworkServiceProvider {
     
     let api: String = NetworkService.api
-    private let authToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzYXJzZW5iYXltZXlpcm1hbkBnbWFpbC5jb20iLCJleHAiOjE3NDkwMTYzNjd9.YX4RwMG6BkFR6LkVMl3JUDerJcJLmZyD1gTBHGTjH_E" // Temporary token for testing
+    private let authToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzYXJzZW5iYXltZXlpcm1hbkBnbWFpbC5jb20iLCJleHAiOjE3NDkzMDcxMzV9.UH3PZJKbtHB0lTFP3YM0TTzpFEytYEvWj3-0iwI4V50" // Temporary token for testing
     
     // MARK: - My Pets API Requests
     
@@ -361,58 +361,70 @@ class NetworkServiceProvider {
     // File path: SDUPM/NetworkService/NetworkService.swift
     // Add the following method to your NetworkServiceProvider class
 
+    // Добавьте это к классу NetworkServiceProvider в файле NetworkService.swift
+
+    // Добавьте это к классу NetworkServiceProvider в файле NetworkService.swift
+
     func fetchLostPets(completion: @escaping ([LostPet]) -> Void) {
-        let urlString = "\(api)/api/v1/pets"
-        var urlComponents = URLComponents(string: urlString)!
-        urlComponents.queryItems = [
-            URLQueryItem(name: "status", value: "lost"),
-            URLQueryItem(name: "limit", value: "100")
-        ]
-        
-        guard let url = urlComponents.url else {
-            print("❌ Cannot form URL")
-            completion([])
+        let urlString = "https://petradar.up.railway.app/pets/lost"
+        guard let url = URL(string: urlString) else {
+            print("❌ Невозможно сформировать URL")
+            DispatchQueue.main.async {
+                completion([])
+            }
             return
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        // Add the auth token
-        request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        
+        // В реальном проекте добавьте токен авторизации при необходимости
+        // request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                print("❌ Error fetching data: \(error.localizedDescription)")
-                completion([])
+                print("❌ Ошибка запроса: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion([])
+                }
                 return
             }
 
             guard let httpResponse = response as? HTTPURLResponse,
                   (200...299).contains(httpResponse.statusCode) else {
-                print("❌ Server error")
-                completion([])
+                print("❌ Ошибка ответа от сервера")
+                DispatchQueue.main.async {
+                    completion([])
+                }
                 return
             }
 
             guard let data = data else {
-                print("❌ No data received")
-                completion([])
+                print("❌ Нет данных")
+                DispatchQueue.main.async {
+                    completion([])
+                }
                 return
             }
 
             do {
+                // Декодируем как LostPetResponse
                 let decoder = JSONDecoder()
                 let response = try decoder.decode(LostPetResponse.self, from: data)
                 DispatchQueue.main.async {
                     completion(response.items)
                 }
             } catch {
-                print("❌ Decoding error: \(error)")
-                if let responseString = String(data: data, encoding: .utf8) {
-                    print("Response: \(responseString)")
+                print("❌ Ошибка декодирования: \(error)")
+                
+                // Для отладки выведем содержимое JSON
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("Полученный JSON: \(jsonString)")
                 }
-                completion([])
+                
+                DispatchQueue.main.async {
+                    completion([])
+                }
             }
         }
 

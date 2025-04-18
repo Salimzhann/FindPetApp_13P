@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		040907B22DB2A08F00862F6A /* LostPet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 040907B12DB2A08F00862F6A /* LostPet.swift */; };
+		040907B42DB2A11400862F6A /* PetAnnotation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 040907B32DB2A11400862F6A /* PetAnnotation.swift */; };
 		044C3BAE2DA4DEAD004D9745 /* FindPetPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044C3BAD2DA4DEAD004D9745 /* FindPetPresenter.swift */; };
 		044C3BB02DA4ED49004D9745 /* PetDetailCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044C3BAF2DA4ED49004D9745 /* PetDetailCell.swift */; };
 		044C3BB42DA7EF0B004D9745 /* ConfirmEmailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044C3BB32DA7EF0B004D9745 /* ConfirmEmailViewController.swift */; };
@@ -47,6 +49,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		040907B12DB2A08F00862F6A /* LostPet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LostPet.swift; sourceTree = "<group>"; };
+		040907B32DB2A11400862F6A /* PetAnnotation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetAnnotation.swift; sourceTree = "<group>"; };
 		044C3BAD2DA4DEAD004D9745 /* FindPetPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindPetPresenter.swift; sourceTree = "<group>"; };
 		044C3BAF2DA4ED49004D9745 /* PetDetailCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetDetailCell.swift; sourceTree = "<group>"; };
 		044C3BB32DA7EF0B004D9745 /* ConfirmEmailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmEmailViewController.swift; sourceTree = "<group>"; };
@@ -271,6 +275,7 @@
 				044C3BCA2DAE15B4004D9745 /* MyPetResponse.swift */,
 				044C3BC62DAE0AB9004D9745 /* PetSearchResponse.swift */,
 				044C3BB72DA8C0F6004D9745 /* ProfileModel.swift */,
+				040907B12DB2A08F00862F6A /* LostPet.swift */,
 			);
 			path = NetworkService;
 			sourceTree = "<group>";
@@ -283,6 +288,7 @@
 				0450003C2D9C2879004EE34A /* Presenter */,
 				045000392D9C10C2004EE34A /* Model */,
 				045000362D9C103F004EE34A /* Cell */,
+				040907B32DB2A11400862F6A /* PetAnnotation.swift */,
 			);
 			path = Main;
 			sourceTree = "<group>";
@@ -368,7 +374,9 @@
 				19213FD52CC4E4A7006D8BE1 /* MainView.swift in Sources */,
 				045000352D9C084B004EE34A /* MyPetViewController.swift in Sources */,
 				045000412D9C2FE6004EE34A /* PetDetailInformationViewController.swift in Sources */,
+				040907B22DB2A08F00862F6A /* LostPet.swift in Sources */,
 				045000502D9D2022004EE34A /* MyPetCell.swift in Sources */,
+				040907B42DB2A11400862F6A /* PetAnnotation.swift in Sources */,
 				044C3BBC2DAA153F004D9745 /* MyPetDetailViewController.swift in Sources */,
 				044C3BBA2DA914A1004D9745 /* FoundPetViewController.swift in Sources */,
 				19213FB82CC3C04B006D8BE1 /* SignInView.swift in Sources */,
@@ -535,6 +543,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 94CHBXCXT8;
@@ -550,8 +559,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.salimzhan.SDUPM;
+				PRODUCT_BUNDLE_IDENTIFIER = LostPets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -567,6 +577,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 94CHBXCXT8;
@@ -582,8 +593,9 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.salimzhan.SDUPM;
+				PRODUCT_BUNDLE_IDENTIFIER = LostPets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
