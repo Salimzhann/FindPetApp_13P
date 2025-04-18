@@ -535,69 +535,105 @@ class NetworkServiceProvider {
     
     // MARK: - Fetch Lost Pets
     
-    /// Получение списка потерянных питомцев
-    func fetchLostPets(page: Int = 1, limit: Int = 10, completion: @escaping (Result<LostPetResponse, Error>) -> Void) {
-        var urlComponents = URLComponents(string: "\(api)/api/v1/pets/lost")!
-        urlComponents.queryItems = [
-            URLQueryItem(name: "page", value: String(page)),
-            URLQueryItem(name: "limit", value: String(limit))
-        ]
-        
-        guard let url = urlComponents.url else {
-            DispatchQueue.main.async {
-                completion(.failure(NetworkError.invalidURL))
-            }
-            return
-        }
-
-        let request = createAuthorizedRequest(url: url, method: "GET")
-
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                self.handleNetworkError(error, completion: completion)
-                return
-            }
-
-            if !self.handleHTTPResponse(response: response, completion: completion) {
-                return
-            }
-
-            guard let data = data else {
+        func fetchLostPets(page: Int = 1, limit: Int = 10, completion: @escaping (Result<APILostPetResponse, Error>) -> Void) {
+            var urlComponents = URLComponents(string: "\(api)/api/v1/pets/lost")!
+            urlComponents.queryItems = [
+                URLQueryItem(name: "page", value: String(page)),
+                URLQueryItem(name: "limit", value: String(limit))
+            ]
+            
+            guard let url = urlComponents.url else {
                 DispatchQueue.main.async {
-                    completion(.failure(NetworkError.noData))
+                    completion(.failure(NetworkError.invalidURL))
                 }
                 return
             }
 
-            do {
-                let decoder = JSONDecoder()
-                let result = try decoder.decode(LostPetResponse.self, from: data)
-                DispatchQueue.main.async {
-                    completion(.success(result))
+            let request = createAuthorizedRequest(url: url, method: "GET")
+
+            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    self.handleNetworkError(error, completion: completion)
+                    return
                 }
-            } catch {
-                print("Decoding error: \(error)")
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.decodingFailed(error)))
+
+                if !self.handleHTTPResponse(response: response, completion: completion) {
+                    return
+                }
+
+                guard let data = data else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.noData))
+                    }
+                    return
+                }
+
+                do {
+                    let decoder = JSONDecoder()
+                    let result = try decoder.decode(APILostPetResponse.self, from: data)
+                    DispatchQueue.main.async {
+                        completion(.success(result))
+                    }
+                } catch {
+                    print("Decoding error: \(error)")
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.decodingFailed(error)))
+                    }
+                }
+            }
+
+            task.resume()
+        }
+
+        /// Функция для обратной совместимости - получает потерянных питомцев и преобразует их для презентера
+        func fetchLostPets(completion: @escaping (Result<LostPetResponse, Error>) -> Void) {
+            fetchLostPets { result in
+                switch result {
+                case .success(let apiResponse):
+                    // Преобразуем APILostPetResponse в LostPetResponse
+                    // Примечание: здесь используется простой мок, в реальной имплементации нужно преобразовать данные
+                    let mockPets: [Pet] = apiResponse.items.compactMap { apiPet in
+                        guard let id = Int(apiPet.id) else { return nil }
+                        
+                        return Pet(
+                            id: id,
+                            name: apiPet.name,
+                            species: apiPet.species,
+                            breed: apiPet.breed,
+                            age: nil,
+                            color: "",
+                            gender: nil,
+                            distinctive_features: nil,
+                            last_seen_location: nil,
+                            photos: [
+                                PetPhoto(
+                                    id: 0,
+                                    pet_id: id,
+                                    photo_url: apiPet.photo_url ?? "",
+                                    is_primary: true,
+                                    created_at: ""
+                                )
+                            ],
+                            status: apiPet.status,
+                            created_at: "",
+                            updated_at: "",
+                            lost_date: apiPet.lost_date,
+                            owner_id: 0
+                        )
+                    }
+                    
+                    let response = LostPetResponse(
+                        items: mockPets,
+                        total: apiResponse.total
+                    )
+                    
+                    completion(.success(response))
+                    
+                case .failure(let error):
+                    completion(.failure(error))
                 }
             }
         }
-
-        task.resume()
-    }
-
-    /// Функция для обратной совместимости
-    func fetchLostPets(completion: @escaping ([Pet]?, Error?) -> Void) {
-        fetchLostPets { result in
-            switch result {
-            case .success(let response):
-                // Преобразование APILostPet в Pet - в реальной имплементации нужно дополнить
-                completion([], nil)
-            case .failure(let error):
-                completion(nil, error)
-            }
-        }
-    }
     
     // MARK: - Fetch Found Pets (Mock Implementation)
     

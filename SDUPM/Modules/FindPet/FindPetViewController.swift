@@ -211,7 +211,15 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
             self.searchButton.isEnabled = false
         }
     }
-    
+    private func hideKeyboardWhenTappedAround() {
+        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
     func hideLoading() {
         DispatchQueue.main.async {
             self.activityIndicator.stopAnimating()

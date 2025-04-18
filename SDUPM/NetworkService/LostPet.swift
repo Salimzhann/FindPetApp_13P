@@ -8,7 +8,7 @@
 import Foundation
 
 // Основная структура ответа
-struct LostPetResponse: Codable {
+struct APILostPetResponse: Codable {
     let items: [APILostPet]
     let total: Int
     let page: Int
@@ -21,7 +21,7 @@ struct APILostPet: Codable {
     let id: String
     let name: String
     let species: String
-    let breed: String
+    let breed: String?
     let photo_url: String?
     let status: String
     let lost_date: String?
@@ -40,7 +40,8 @@ struct APILostPet: Codable {
             age: nil, // API не предоставляет возраст
             gender: nil, // API не предоставляет пол
             species: species,
-            imageUrl: photo_url
+            imageUrl: photo_url,
+            breed: String(breed ?? "")
         )
     }
 }

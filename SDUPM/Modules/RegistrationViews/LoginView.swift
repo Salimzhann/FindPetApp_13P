@@ -131,7 +131,15 @@ class LoginView: UIViewController {
             }
         }
     }
-    
+    private func hideKeyboardWhenTappedAround() {
+        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
     func showLoadingOnButton() {
         LogInButton.setTitle(nil, for: .normal)
         signUpSpinner.startAnimating()

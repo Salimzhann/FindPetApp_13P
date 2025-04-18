@@ -36,7 +36,7 @@ struct Pet: Codable {
     let updated_at: String
     let lost_date: String?
     let owner_id: Int
-    
+
     var mainPhotoURL: URL? {
         if let primaryPhoto = photos.first(where: { $0.is_primary }) {
             return URL(string: primaryPhoto.photo_url)

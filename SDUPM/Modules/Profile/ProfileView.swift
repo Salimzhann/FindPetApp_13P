@@ -285,7 +285,15 @@ class ProfileView: UIViewController, ProfileViewProtocol {
             self?.present(alert, animated: true)
         }
     }
-    
+    private func hideKeyboardWhenTappedAround() {
+        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
     func navigateToLogin() {
         DispatchQueue.main.async {
             if let window = UIApplication.shared.windows.first {

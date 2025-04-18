@@ -12,9 +12,11 @@ struct LostPet: Codable {
     let gender: String?
     let species: String
     let imageUrl: String?
+    let breed: String? 
     
     init(from pet: Pet) {
         self.id = pet.id
+        self.breed = pet.breed
         self.name = pet.name
         self.age = pet.age
         self.gender = pet.gender
@@ -22,12 +24,13 @@ struct LostPet: Codable {
         self.imageUrl = pet.photos.first(where: { $0.is_primary })?.photo_url ?? pet.photos.first?.photo_url
     }
     
-    init(id: Int, name: String, age: Int?, gender: String?, species: String, imageUrl: String?) {
+    init(id: Int, name: String, age: Int?, gender: String?, species: String, imageUrl: String?, breed: String) {
         self.id = id
         self.name = name
         self.age = age
         self.gender = gender
         self.species = species
         self.imageUrl = imageUrl
+        self.breed = breed
     }
 }

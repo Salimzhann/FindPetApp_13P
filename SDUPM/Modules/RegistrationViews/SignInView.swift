@@ -234,7 +234,15 @@ class SignInView: UIViewController, UITextFieldDelegate {
         signUpSpinner.startAnimating()
         signUpButton.isUserInteractionEnabled = false
     }
-    
+    private func hideKeyboardWhenTappedAround() {
+        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
     private func hideLoadingOnButton() {
         signUpSpinner.stopAnimating()
         signUpButton.setTitle("Sign Up", for: .normal)
@@ -278,34 +286,33 @@ class SignInView: UIViewController, UITextFieldDelegate {
         showLoadingOnButton()
         
         let apiSender = SignInViewModel()
-        apiSender.sendUserData(fullName: fullName, email: email, password: password, phoneNumber: phone) { [weak self] responseString in
+        apiSender.sendUserData(fullName: fullName, email: email, password: password, phoneNumber: phone) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 self.hideLoadingOnButton()
                 
-                guard let response = responseString else {
-                    self.showAlert(title: "Error", message: "Failed to register. Please try again.")
-                    return
-                }
-                
-                if response == "Success" {
-                    let confirmVC = ConfirmEmailViewController(email: email)
-                    confirmVC.modalPresentationStyle = .pageSheet
-                    
-                    if let sheet = confirmVC.sheetPresentationController {
-                        sheet.detents = [.medium()]
-                        sheet.prefersGrabberVisible = true
-                        sheet.preferredCornerRadius = 24
+                switch result {
+                case .success(let message):
+                    if message == "Success" {
+                        let confirmVC = ConfirmEmailViewController(email: email)
+                        confirmVC.modalPresentationStyle = .pageSheet
+                        
+                        if let sheet = confirmVC.sheetPresentationController {
+                            sheet.detents = [.medium()]
+                            sheet.prefersGrabberVisible = true
+                            sheet.preferredCornerRadius = 24
+                        }
+                        
+                        self.present(confirmVC, animated: true)
+                    } else {
+                        self.showAlert(title: "Registration Failed", message: message)
                     }
-                    
-                    self.present(confirmVC, animated: true)
-                } else {
-                    self.showAlert(title: "Registration Failed", message: response)
+                case .failure(let error):
+                    self.showAlert(title: "Error", message: error.localizedDescription)
                 }
             }
         }
     }
-    
     private func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
