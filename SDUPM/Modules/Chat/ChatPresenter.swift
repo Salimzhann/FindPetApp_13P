@@ -1,4 +1,7 @@
+// Путь: SDUPM/Modules/Chat/ChatPresenter.swift
+
 import Foundation
+
 protocol ChatViewProtocol: AnyObject {
     func setMessages(_ messages: [ChatMessage])
     func addMessage(_ message: ChatMessage)
@@ -8,17 +11,18 @@ protocol ChatViewProtocol: AnyObject {
     func hideLoading()
     func showError(message: String)
 }
+
 class ChatPresenter {
     
     weak var view: ChatViewProtocol?
-        private let provider = NetworkServiceProvider()
-        private let chatId: Int
-        private var webSocketTask: URLSessionWebSocketTask?
-        private var isConnected = false
-        
-        init(chatId: Int) {
-            self.chatId = chatId
-        }
+    private let provider = NetworkServiceProvider()
+    private let chatId: Int
+    private var webSocketTask: URLSessionWebSocketTask?
+    private var isConnected = false
+    
+    init(chatId: Int) {
+        self.chatId = chatId
+    }
     
     func fetchMessages() {
         view?.showLoading()
@@ -41,11 +45,13 @@ class ChatPresenter {
     
     func sendMessage(content: String) {
         provider.sendMessage(chatId: chatId, content: content) { [weak self] result in
-            switch result {
-            case .success(let message):
-                self?.view?.addMessage(message)
-            case .failure(let error):
-                self?.view?.showError(message: error.localizedDescription)
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let message):
+                    self?.view?.addMessage(message)
+                case .failure(let error):
+                    self?.view?.showError(message: error.localizedDescription)
+                }
             }
         }
     }
@@ -53,20 +59,26 @@ class ChatPresenter {
     // MARK: - WebSocket
     
     func connectToWebSocket() {
-        guard let url = URL(string: "\(NetworkService.api)/ws/chat/\(chatId)") else {
-            view?.showError(message: "Invalid WebSocket URL")
+        guard var urlComponents = URLComponents(string: "\(NetworkService.api)/ws/\(chatId)") else {
+            DispatchQueue.main.async {
+                self.view?.showError(message: "Invalid WebSocket URL")
+            }
             return
         }
         
-        var request = URLRequest(url: url)
-        
-        // Добавляем токен авторизации
         if let token = UserDefaults.standard.string(forKey: LoginInViewModel.tokenIdentifier) {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            urlComponents.queryItems = [URLQueryItem(name: "token", value: token)]
+        }
+        
+        guard let url = urlComponents.url else {
+            DispatchQueue.main.async {
+                self.view?.showError(message: "Failed to create WebSocket URL")
+            }
+            return
         }
         
         let session = URLSession(configuration: .default)
-        webSocketTask = session.webSocketTask(with: request)
+        webSocketTask = session.webSocketTask(with: url)
         
         webSocketTask?.resume()
         isConnected = true
@@ -98,7 +110,6 @@ class ChatPresenter {
                     break
                 }
                 
-                // Продолжаем слушать новые сообщения
                 self.receiveMessage()
                 
             case .failure(let error):
@@ -113,29 +124,9 @@ class ChatPresenter {
     private func handleWebSocketMessage(_ text: String) {
         do {
             if let data = text.data(using: .utf8) {
-                let messageType = try JSONDecoder().decode(WebSocketMessage.self, from: data)
-                
-                switch messageType.type {
-                case "message":
-                    if let messageData = messageType.data.data(using: .utf8) {
-                        let message = try JSONDecoder().decode(ChatMessage.self, from: messageData)
-                        DispatchQueue.main.async {
-                            self.view?.addMessage(message)
-                        }
-                    }
-                case "typing":
-                    DispatchQueue.main.async {
-                        self.view?.showTypingIndicator(true)
-                        
-                        // Скрываем индикатор через 2 секунды, если не будет новых событий
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            self.view?.showTypingIndicator(false)
-                        }
-                    }
-                case "read_status":
-                    self.fetchMessages() // Обновляем все сообщения, чтобы отобразить новые статусы прочтения
-                default:
-                    break
+                let message = try JSONDecoder().decode(ChatMessage.self, from: data)
+                DispatchQueue.main.async {
+                    self.view?.addMessage(message)
                 }
             }
         } catch {
@@ -146,10 +137,10 @@ class ChatPresenter {
     func sendTypingEvent() {
         guard isConnected else { return }
         
-        let typingEvent = WebSocketMessage(type: "typing", data: "")
+        let messageDict = ["message": ""] // Пустое сообщение для события typing
         
         do {
-            let jsonData = try JSONEncoder().encode(typingEvent)
+            let jsonData = try JSONSerialization.data(withJSONObject: messageDict)
             if let jsonString = String(data: jsonData, encoding: .utf8) {
                 let message = URLSessionWebSocketTask.Message.string(jsonString)
                 webSocketTask?.send(message) { error in
@@ -162,9 +153,4 @@ class ChatPresenter {
             print("Failed to encode typing event: \(error)")
         }
     }
-}
-
-struct WebSocketMessage: Codable {
-    let type: String
-    let data: String
 }

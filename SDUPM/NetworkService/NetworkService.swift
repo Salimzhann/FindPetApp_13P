@@ -535,105 +535,105 @@ class NetworkServiceProvider {
     
     // MARK: - Fetch Lost Pets
     
-        func fetchLostPets(page: Int = 1, limit: Int = 10, completion: @escaping (Result<APILostPetResponse, Error>) -> Void) {
-            var urlComponents = URLComponents(string: "\(api)/api/v1/pets/lost")!
-            urlComponents.queryItems = [
-                URLQueryItem(name: "page", value: String(page)),
-                URLQueryItem(name: "limit", value: String(limit))
-            ]
+    func fetchLostPets(page: Int = 1, limit: Int = 10, completion: @escaping (Result<APILostPetResponse, Error>) -> Void) {
+        var urlComponents = URLComponents(string: "\(api)/api/v1/pets/lost")!
+        urlComponents.queryItems = [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "limit", value: String(limit))
+        ]
+        
+        guard let url = urlComponents.url else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        let request = createAuthorizedRequest(url: url, method: "GET")
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                self.handleNetworkError(error, completion: completion)
+                return
+            }
             
-            guard let url = urlComponents.url else {
+            if !self.handleHTTPResponse(response: response, completion: completion) {
+                return
+            }
+            
+            guard let data = data else {
                 DispatchQueue.main.async {
-                    completion(.failure(NetworkError.invalidURL))
+                    completion(.failure(NetworkError.noData))
                 }
                 return
             }
-
-            let request = createAuthorizedRequest(url: url, method: "GET")
-
-            let task = URLSession.shared.dataTask(with: request) { data, response, error in
-                if let error = error {
-                    self.handleNetworkError(error, completion: completion)
-                    return
+            
+            do {
+                let decoder = JSONDecoder()
+                let result = try decoder.decode(APILostPetResponse.self, from: data)
+                DispatchQueue.main.async {
+                    completion(.success(result))
                 }
-
-                if !self.handleHTTPResponse(response: response, completion: completion) {
-                    return
-                }
-
-                guard let data = data else {
-                    DispatchQueue.main.async {
-                        completion(.failure(NetworkError.noData))
-                    }
-                    return
-                }
-
-                do {
-                    let decoder = JSONDecoder()
-                    let result = try decoder.decode(APILostPetResponse.self, from: data)
-                    DispatchQueue.main.async {
-                        completion(.success(result))
-                    }
-                } catch {
-                    print("Decoding error: \(error)")
-                    DispatchQueue.main.async {
-                        completion(.failure(NetworkError.decodingFailed(error)))
-                    }
+            } catch {
+                print("Decoding error: \(error)")
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.decodingFailed(error)))
                 }
             }
-
-            task.resume()
         }
-
-        /// Функция для обратной совместимости - получает потерянных питомцев и преобразует их для презентера
-        func fetchLostPets(completion: @escaping (Result<LostPetResponse, Error>) -> Void) {
-            fetchLostPets { result in
-                switch result {
-                case .success(let apiResponse):
-                    // Преобразуем APILostPetResponse в LostPetResponse
-                    // Примечание: здесь используется простой мок, в реальной имплементации нужно преобразовать данные
-                    let mockPets: [Pet] = apiResponse.items.compactMap { apiPet in
-                        guard let id = Int(apiPet.id) else { return nil }
-                        
-                        return Pet(
-                            id: id,
-                            name: apiPet.name,
-                            species: apiPet.species,
-                            breed: apiPet.breed,
-                            age: nil,
-                            color: "",
-                            gender: nil,
-                            distinctive_features: nil,
-                            last_seen_location: nil,
-                            photos: [
-                                PetPhoto(
-                                    id: 0,
-                                    pet_id: id,
-                                    photo_url: apiPet.photo_url ?? "",
-                                    is_primary: true,
-                                    created_at: ""
-                                )
-                            ],
-                            status: apiPet.status,
-                            created_at: "",
-                            updated_at: "",
-                            lost_date: apiPet.lost_date,
-                            owner_id: 0
-                        )
-                    }
+        
+        task.resume()
+    }
+    
+    /// Функция для обратной совместимости - получает потерянных питомцев и преобразует их для презентера
+    func fetchLostPets(completion: @escaping (Result<LostPetResponse, Error>) -> Void) {
+        fetchLostPets { result in
+            switch result {
+            case .success(let apiResponse):
+                // Преобразуем APILostPetResponse в LostPetResponse
+                // Примечание: здесь используется простой мок, в реальной имплементации нужно преобразовать данные
+                let mockPets: [Pet] = apiResponse.items.compactMap { apiPet in
+                    guard let id = Int(apiPet.id) else { return nil }
                     
-                    let response = LostPetResponse(
-                        items: mockPets,
-                        total: apiResponse.total
+                    return Pet(
+                        id: id,
+                        name: apiPet.name,
+                        species: apiPet.species,
+                        breed: apiPet.breed,
+                        age: nil,
+                        color: "",
+                        gender: nil,
+                        distinctive_features: nil,
+                        last_seen_location: nil,
+                        photos: [
+                            PetPhoto(
+                                id: 0,
+                                pet_id: id,
+                                photo_url: apiPet.photo_url ?? "",
+                                is_primary: true,
+                                created_at: ""
+                            )
+                        ],
+                        status: apiPet.status,
+                        created_at: "",
+                        updated_at: "",
+                        lost_date: apiPet.lost_date,
+                        owner_id: 0
                     )
-                    
-                    completion(.success(response))
-                    
-                case .failure(let error):
-                    completion(.failure(error))
                 }
+                
+                let response = LostPetResponse(
+                    items: mockPets,
+                    total: apiResponse.total
+                )
+                
+                completion(.success(response))
+                
+            case .failure(let error):
+                completion(.failure(error))
             }
         }
+    }
     
     // MARK: - Fetch Found Pets (Mock Implementation)
     
@@ -853,6 +853,8 @@ class NetworkServiceProvider {
         
         task.resume()
     }
+    // Путь: SDUPM/NetworkService/NetworkService.swift (добавить эти методы в класс NetworkServiceProvider)
+    
     func fetchChats(completion: @escaping (Result<[Chat], Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/chats") else {
             DispatchQueue.main.async {
@@ -893,19 +895,9 @@ class NetworkServiceProvider {
             }
             
             do {
-                // Парсим ответ в виде массива чатов
-                let chats = try JSONDecoder().decode([Chat].self, from: data)
-                
-                // Добавим моковые имена для демонстрации (в реальном приложении они должны приходить с сервера)
-                let mockedChats = chats.map { chat -> Chat in
-                    var updatedChat = chat
-                    updatedChat.otherUserName = "User \(chat.user2_id)"
-                    updatedChat.petName = "Pet \(chat.pet_id)"
-                    return updatedChat
-                }
-                
+                let chatResponse = try JSONDecoder().decode(ChatResponse.self, from: data)
                 DispatchQueue.main.async {
-                    completion(.success(mockedChats))
+                    completion(.success(chatResponse.chats))
                 }
             } catch {
                 DispatchQueue.main.async {
@@ -916,8 +908,7 @@ class NetworkServiceProvider {
         
         task.resume()
     }
-
-    /// Создание нового чата
+    
     func createChat(petId: Int, userId: Int, completion: @escaping (Result<Chat, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/chats") else {
             DispatchQueue.main.async {
@@ -967,7 +958,7 @@ class NetworkServiceProvider {
                 do {
                     var chat = try JSONDecoder().decode(Chat.self, from: data)
                     
-                    // Добавим моковые имена для демонстрации
+                    // Добавляем имена для отображения
                     chat.otherUserName = "User \(chat.user2_id)"
                     chat.petName = "Pet \(chat.pet_id)"
                     
@@ -988,8 +979,7 @@ class NetworkServiceProvider {
             }
         }
     }
-
-    /// Получение сообщений чата
+    
     func getChatMessages(chatId: Int, completion: @escaping (Result<[ChatMessage], Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/chats/\(chatId)/messages") else {
             DispatchQueue.main.async {
@@ -1043,8 +1033,7 @@ class NetworkServiceProvider {
         
         task.resume()
     }
-
-    /// Отправка сообщения
+    
     func sendMessage(chatId: Int, content: String, completion: @escaping (Result<ChatMessage, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/chats/\(chatId)/messages") else {
             DispatchQueue.main.async {
@@ -1109,46 +1098,5 @@ class NetworkServiceProvider {
                 completion(.failure(NetworkError.unknownError(error)))
             }
         }
-    }
-
-    /// Удаление чата
-    func deleteChat(chatId: Int, completion: @escaping (Result<Bool, Error>) -> Void) {
-        guard let url = URL(string: "\(api)/api/v1/chats/\(chatId)") else {
-            DispatchQueue.main.async {
-                completion(.failure(NetworkError.invalidURL))
-            }
-            return
-        }
-        
-        let request = createAuthorizedRequest(url: url, method: "DELETE")
-        
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.unknownError(error)))
-                }
-                return
-            }
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
-                }
-                return
-            }
-            
-            guard (200...299).contains(httpResponse.statusCode) else {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
-                }
-                return
-            }
-            
-            DispatchQueue.main.async {
-                completion(.success(true))
-            }
-        }
-        
-        task.resume()
     }
 }

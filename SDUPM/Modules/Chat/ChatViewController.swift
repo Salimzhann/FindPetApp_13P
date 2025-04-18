@@ -1,9 +1,4 @@
-//
-//  ChatViewController.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 18.04.2025.
-//
+// Путь: SDUPM/Modules/Chat/ChatViewController.swift
 
 import UIKit
 import SnapKit
@@ -13,6 +8,7 @@ class ChatViewController: UIViewController {
     private let chat: Chat
     private var messages: [ChatMessage] = []
     private var currentUserId: Int = 1 // Значение будет получено из UserDefaults
+    private let presenter: ChatPresenter
     
     // MARK: - UI Components
     
@@ -78,6 +74,7 @@ class ChatViewController: UIViewController {
     
     init(chat: Chat) {
         self.chat = chat
+        self.presenter = ChatPresenter(chatId: chat.id)
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -100,9 +97,18 @@ class ChatViewController: UIViewController {
         }
         
         title = chat.otherUserName
-        
-        // Загружаем тестовые сообщения
-        loadMockMessages()
+        presenter.view = self
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        presenter.fetchMessages()
+        presenter.connectToWebSocket()
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        presenter.disconnectFromWebSocket()
     }
     
     // MARK: - Setup
@@ -194,63 +200,6 @@ class ChatViewController: UIViewController {
         )
     }
     
-    private func loadMockMessages() {
-        // Показываем индикатор загрузки
-        activityIndicator.startAnimating()
-        
-        // Моковые сообщения для тестирования
-        if let lastMessage = chat.last_message {
-            messages = [lastMessage]
-        }
-        
-        // Добавим еще несколько сообщений
-        messages.append(ChatMessage(
-            id: messages.count + 1,
-            content: "Hello! I saw your post about the pet.",
-            chat_id: chat.id,
-            sender_id: currentUserId,
-            is_read: true,
-            created_at: "2025-04-18T12:05:00.000000"
-        ))
-        
-        messages.append(ChatMessage(
-            id: messages.count + 1,
-            content: "Can you share more details about where you found it?",
-            chat_id: chat.id,
-            sender_id: chat.user2_id,
-            is_read: true,
-            created_at: "2025-04-18T12:07:00.000000"
-        ))
-        
-        messages.append(ChatMessage(
-            id: messages.count + 1,
-            content: "I found it near the park on Main Street.",
-            chat_id: chat.id,
-            sender_id: currentUserId,
-            is_read: true,
-            created_at: "2025-04-18T12:10:00.000000"
-        ))
-        
-        // Инвертируем сообщения для отображения в обратном порядке
-        messages = messages.reversed()
-        
-        // Имитируем задержку загрузки
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            guard let self = self else { return }
-            
-            // Скрываем индикатор загрузки
-            self.activityIndicator.stopAnimating()
-            
-            // Обновляем таблицу
-            self.tableView.reloadData()
-            
-            // Прокручиваем к самому последнему сообщению
-            if !self.messages.isEmpty {
-                self.tableView.scrollToRow(at: IndexPath(row: 0, section: 0), at: .bottom, animated: false)
-            }
-        }
-    }
-    
     // MARK: - Actions
     
     @objc private func dismissKeyboard() {
@@ -260,40 +209,14 @@ class ChatViewController: UIViewController {
     @objc private func sendButtonTapped() {
         guard let messageText = messageTextView.text, !messageText.isEmpty else { return }
         
-        // Создаем новое сообщение
-        let newMessage = ChatMessage(
-            id: messages.count + 1,
-            content: messageText,
-            chat_id: chat.id,
-            sender_id: currentUserId,
-            is_read: false,
-            created_at: ISO8601DateFormatter().string(from: Date())
-        )
-        
-        // Добавляем сообщение в массив (вставляем в начало из-за инвертирования)
-        messages.insert(newMessage, at: 0)
-        
-        // Обновляем таблицу
-        tableView.beginUpdates()
-        tableView.insertRows(at: [IndexPath(row: 0, section: 0)], with: .bottom)
-        tableView.endUpdates()
-        
-        // Прокручиваем к новому сообщению
-        tableView.scrollToRow(at: IndexPath(row: 0, section: 0), at: .bottom, animated: true)
+        presenter.sendMessage(content: messageText)
         
         // Очищаем поле ввода
         messageTextView.text = ""
         updateTextViewHeight()
         
-        // Имитация "typing..." у собеседника
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.showTypingIndicator(true)
-            
-            // Скрываем индикатор через 2 секунды
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-                self?.showTypingIndicator(false)
-            }
-        }
+        // Уведомляем собеседника о наборе текста
+        presenter.sendTypingEvent()
     }
     
     @objc private func keyboardWillShow(notification: Notification) {
@@ -335,7 +258,36 @@ class ChatViewController: UIViewController {
             make.height.greaterThanOrEqualTo(containerHeight)
         }
         
-        view.layoutIfNeeded()
+        DispatchQueue.main.async {
+            self.view.layoutIfNeeded()
+        }
+    }
+}
+
+// MARK: - ChatViewProtocol
+
+extension ChatViewController: ChatViewProtocol {
+    func setMessages(_ messages: [ChatMessage]) {
+        self.messages = messages.reversed() // Инвертируем порядок сообщений
+        DispatchQueue.main.async {
+            self.tableView.reloadData()
+            if !self.messages.isEmpty {
+                self.tableView.scrollToRow(at: IndexPath(row: 0, section: 0), at: .bottom, animated: false)
+            }
+        }
+    }
+    
+    func addMessage(_ message: ChatMessage) {
+        // Проверяем, нет ли уже такого сообщения (по id)
+        if !messages.contains(where: { $0.id == message.id }) {
+            messages.insert(message, at: 0) // Вставляем в начало списка (из-за инвертированной таблицы)
+            DispatchQueue.main.async {
+                self.tableView.beginUpdates()
+                self.tableView.insertRows(at: [IndexPath(row: 0, section: 0)], with: .bottom)
+                self.tableView.endUpdates()
+                self.tableView.scrollToRow(at: IndexPath(row: 0, section: 0), at: .bottom, animated: true)
+            }
+        }
     }
     
     func showTypingIndicator(_ isTyping: Bool) {
@@ -343,6 +295,30 @@ class ChatViewController: UIViewController {
             UIView.animate(withDuration: 0.2) {
                 self.typingIndicatorView.isHidden = !isTyping
             }
+        }
+    }
+    
+    func showUserInfo(_ userInfo: UserProfile) {
+        // Реализация не требуется для текущей задачи
+    }
+    
+    func showLoading() {
+        DispatchQueue.main.async {
+            self.activityIndicator.startAnimating()
+        }
+    }
+    
+    func hideLoading() {
+        DispatchQueue.main.async {
+            self.activityIndicator.stopAnimating()
+        }
+    }
+    
+    func showError(message: String) {
+        DispatchQueue.main.async {
+            let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(alert, animated: true)
         }
     }
 }
@@ -386,151 +362,7 @@ extension ChatViewController: UITableViewDataSource, UITableViewDelegate {
 extension ChatViewController: UITextViewDelegate {
     func textViewDidChange(_ textView: UITextView) {
         updateTextViewHeight()
-    }
-}
-
-// MARK: - Message Cells
-
-class BaseMessageCell: UITableViewCell {
-    
-    let bubbleView: UIView = {
-        let view = UIView()
-        view.layer.cornerRadius = 16
-        view.clipsToBounds = true
-        return view
-    }()
-    
-    let messageLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 16)
-        label.numberOfLines = 0
-        return label
-    }()
-    
-    let timeLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 10)
-        label.textColor = .systemGray
-        return label
-    }()
-    
-    let readStatusImageView: UIImageView = {
-        let imageView = UIImageView()
-        imageView.contentMode = .scaleAspectFit
-        imageView.tintColor = .systemBlue
-        return imageView
-    }()
-    
-    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
-        super.init(style: style, reuseIdentifier: reuseIdentifier)
-        selectionStyle = .none
-        backgroundColor = .clear
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-    func configure(with message: ChatMessage) {
-        messageLabel.text = message.content
-        timeLabel.text = message.formattedTime
-        
-        if message.is_read {
-            readStatusImageView.image = UIImage(systemName: "checkmark.circle.fill")
-        } else {
-            readStatusImageView.image = UIImage(systemName: "checkmark.circle")
-        }
-    }
-}
-
-class OutgoingMessageCell: BaseMessageCell {
-    
-    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
-        super.init(style: style, reuseIdentifier: reuseIdentifier)
-        setupCell()
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-    private func setupCell() {
-        bubbleView.backgroundColor = .systemGreen.withAlphaComponent(0.8)
-        messageLabel.textColor = .white
-        
-        contentView.addSubview(bubbleView)
-        bubbleView.addSubview(messageLabel)
-        bubbleView.addSubview(timeLabel)
-        contentView.addSubview(readStatusImageView)
-        
-        bubbleView.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(4)
-            make.bottom.equalToSuperview().offset(-4)
-            make.trailing.equalToSuperview().offset(-16)
-            make.width.lessThanOrEqualTo(250)
-        }
-        
-        messageLabel.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(8)
-            make.leading.equalToSuperview().offset(12)
-            make.trailing.equalToSuperview().offset(-12)
-        }
-        
-        timeLabel.snp.makeConstraints { make in
-            make.trailing.equalToSuperview().offset(-12)
-            make.bottom.equalToSuperview().offset(-6)
-            make.top.equalTo(messageLabel.snp.bottom).offset(4)
-        }
-        
-        readStatusImageView.snp.makeConstraints { make in
-            make.leading.equalTo(bubbleView.snp.leading).offset(-16)
-            make.bottom.equalTo(bubbleView)
-            make.width.height.equalTo(12)
-        }
-    }
-}
-
-class IncomingMessageCell: BaseMessageCell {
-    
-    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
-        super.init(style: style, reuseIdentifier: reuseIdentifier)
-        setupCell()
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-    private func setupCell() {
-        bubbleView.backgroundColor = .systemGray5
-        messageLabel.textColor = .label
-        
-        contentView.addSubview(bubbleView)
-        bubbleView.addSubview(messageLabel)
-        bubbleView.addSubview(timeLabel)
-        
-        bubbleView.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(4)
-            make.bottom.equalToSuperview().offset(-4)
-            make.leading.equalToSuperview().offset(16)
-            make.width.lessThanOrEqualTo(250)
-        }
-        
-        messageLabel.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(8)
-            make.leading.equalToSuperview().offset(12)
-            make.trailing.equalToSuperview().offset(-12)
-        }
-        
-        timeLabel.snp.makeConstraints { make in
-            make.trailing.equalToSuperview().offset(-12)
-            make.bottom.equalToSuperview().offset(-6)
-            make.top.equalTo(messageLabel.snp.bottom).offset(4)
-        }
-    }
-    
-    override func configure(with message: ChatMessage) {
-        super.configure(with: message)
-        readStatusImageView.isHidden = true
+        // Отправка уведомления о наборе текста
+        presenter.sendTypingEvent()
     }
 }
