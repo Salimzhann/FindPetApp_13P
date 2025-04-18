@@ -1,13 +1,7 @@
-//
-//  ConfirmEmailViewController.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 10.04.2025.
-//
+// File path: SDUPM/Modules/RegistrationViews/ConfirmEmailViewController.swift
 
 import UIKit
 import SnapKit
-
 
 class ConfirmEmailViewController: UIViewController {
     
@@ -21,12 +15,25 @@ class ConfirmEmailViewController: UIViewController {
         label.font = UIFont.systemFont(ofSize: 25, weight: .bold)
         return label
     }()
-    private let emailTextField: UITextField = {
-        let id = UITextField()
-        id.placeholder = "Enter password from email"
-        id.borderStyle = .roundedRect
-        return id
+    
+    private let instructionLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Please enter the verification code sent to your email"
+        label.textColor = .darkGray
+        label.font = UIFont.systemFont(ofSize: 14)
+        label.numberOfLines = 0
+        label.textAlignment = .center
+        return label
     }()
+    
+    private let emailTextField: UITextField = {
+        let textField = UITextField()
+        textField.placeholder = "Enter verification code"
+        textField.borderStyle = .roundedRect
+        textField.keyboardType = .numberPad
+        return textField
+    }()
+    
     private let confirmButton: UIButton = {
         let button = UIButton()
         button.setTitle("Confirm Email", for: .normal)
@@ -35,6 +42,7 @@ class ConfirmEmailViewController: UIViewController {
         button.tintColor = .white
         return button
     }()
+    
     private let signUpSpinner: UIActivityIndicatorView = {
         let spinner = UIActivityIndicatorView(style: .medium)
         spinner.hidesWhenStopped = true
@@ -54,6 +62,7 @@ class ConfirmEmailViewController: UIViewController {
     }
     
     override func viewDidLoad() {
+        super.viewDidLoad()
         setupViews()
         hideKeyboardWhenTappedAround()
     }
@@ -67,15 +76,23 @@ class ConfirmEmailViewController: UIViewController {
             make.centerX.equalToSuperview()
         }
         
+        view.addSubview(instructionLabel)
+        instructionLabel.snp.makeConstraints { make in
+            make.top.equalTo(emailLabel.snp.bottom).offset(10)
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.centerX.equalToSuperview()
+        }
+        
         view.addSubview(emailTextField)
         emailTextField.snp.makeConstraints { make in
-            make.top.equalTo(emailLabel.snp.bottom).offset(5)
+            make.top.equalTo(instructionLabel.snp.bottom).offset(20)
             make.leading.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(50)
         }
         
         view.addSubview(confirmButton)
         confirmButton.snp.makeConstraints { make in
-            make.bottom.equalToSuperview().offset(-40)
+            make.top.equalTo(emailTextField.snp.bottom).offset(20)
             make.leading.trailing.equalToSuperview().inset(20)
             make.height.equalTo(46)
         }
@@ -94,19 +111,43 @@ class ConfirmEmailViewController: UIViewController {
 
     func hideLoadingOnButton() {
         signUpSpinner.stopAnimating()
-        confirmButton.setTitle("Sign Up", for: .normal)
+        confirmButton.setTitle("Confirm Email", for: .normal)
         confirmButton.isUserInteractionEnabled = true
     }
     
     @objc private func didTap() {
-        guard let text = emailTextField.text, !text.isEmpty else { return }
+        guard let code = emailTextField.text, !code.isEmpty else {
+            showAlert(title: "Error", message: "Please enter verification code")
+            return
+        }
         
         showLoadingOnButton()
-        presenter.verifyEmail(verificationCode: text, newEmail: email) { _ in
+        presenter.verifyEmail(verificationCode: code, newEmail: email) { result in
             DispatchQueue.main.async {
                 self.hideLoadingOnButton()
-                self.dismiss(animated: true)
+                
+                if let result = result, result == "Success" {
+                    self.showAlert(title: "Success", message: "Email verified successfully", completion: {
+                        self.dismiss(animated: true) {
+                            if let navigationController = UIApplication.shared.keyWindow?.rootViewController as? UINavigationController {
+                                let loginView = LoginView()
+                                navigationController.pushViewController(loginView, animated: true)
+                            }
+                        }
+                    })
+                } else {
+                    self.showAlert(title: "Error", message: result ?? "Verification failed")
+                }
             }
         }
+    }
+    
+    func showAlert(title: String, message: String, completion: (() -> Void)? = nil) {
+        let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        let okAction = UIAlertAction(title: "OK", style: .default) { _ in
+            completion?()
+        }
+        alertController.addAction(okAction)
+        present(alertController, animated: true)
     }
 }

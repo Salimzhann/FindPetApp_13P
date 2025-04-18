@@ -7,8 +7,6 @@
 
 // File path: SDUPM/NetworkService/NetworkService.swift
 
-// File path: SDUPM/NetworkService/NetworkService.swift
-
 import Foundation
 import UIKit
 
@@ -52,7 +50,240 @@ struct NetworkService {
 class NetworkServiceProvider {
     
     let api: String = NetworkService.api
-    private let authToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzYXJzZW5iYXltZXlpcm1hbkBnbWFpbC5jb20iLCJleHAiOjE3NDkzMDcxMzV9.UH3PZJKbtHB0lTFP3YM0TTzpFEytYEvWj3-0iwI4V50" // Temporary token for testing
+    
+    // MARK: - Authentication API Requests
+    
+    func login(email: String, password: String, completion: @escaping (Result<String, Error>) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/auth/login") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+            "email": email,
+            "password": password
+        ]
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: body) else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.unknownError(NSError(domain: "JSONSerializationError", code: 0, userInfo: nil))))
+            }
+            return
+        }
+        
+        request.httpBody = jsonData
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.unknownError(error)))
+                }
+                return
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                }
+                return
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                }
+                return
+            }
+            
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.noData))
+                }
+                return
+            }
+            
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let accessToken = json["access_token"] as? String {
+                    UserDefaults.standard.setValue(accessToken, forKey: LoginInViewModel.tokenIdentifier)
+                    DispatchQueue.main.async {
+                        completion(.success(accessToken))
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.decodingFailed(NSError(domain: "InvalidResponse", code: 0, userInfo: nil))))
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.decodingFailed(error)))
+                }
+            }
+        }
+        
+        task.resume()
+    }
+    
+    func register(email: String, firstName: String, lastName: String, phone: String, password: String, completion: @escaping (Result<String, Error>) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/auth/register") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+            "email": email,
+            "first_name": firstName,
+            "last_name": lastName,
+            "phone": phone,
+            "password": password
+        ]
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: body) else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.unknownError(NSError(domain: "JSONSerializationError", code: 0, userInfo: nil))))
+            }
+            return
+        }
+        
+        request.httpBody = jsonData
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.unknownError(error)))
+                }
+                return
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                }
+                return
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                }
+                return
+            }
+            
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.noData))
+                }
+                return
+            }
+            
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let message = json["message"] as? String {
+                    DispatchQueue.main.async {
+                        completion(.success(message))
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.decodingFailed(NSError(domain: "InvalidResponse", code: 0, userInfo: nil))))
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.decodingFailed(error)))
+                }
+            }
+        }
+        
+        task.resume()
+    }
+    
+    func verifyEmail(email: String, code: String, completion: @escaping (Result<String, Error>) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/auth/verify") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+            "email": email,
+            "code": code
+        ]
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: body) else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.unknownError(NSError(domain: "JSONSerializationError", code: 0, userInfo: nil))))
+            }
+            return
+        }
+        
+        request.httpBody = jsonData
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.unknownError(error)))
+                }
+                return
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                }
+                return
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                }
+                return
+            }
+            
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.noData))
+                }
+                return
+            }
+            
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let message = json["message"] as? String {
+                    DispatchQueue.main.async {
+                        completion(.success(message))
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.decodingFailed(NSError(domain: "InvalidResponse", code: 0, userInfo: nil))))
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.decodingFailed(error)))
+                }
+            }
+        }
+        
+        task.resume()
+    }
     
     // MARK: - My Pets API Requests
     
@@ -66,7 +297,11 @@ class NetworkServiceProvider {
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+        
+        if let token = UserDefaults.standard.string(forKey: LoginInViewModel.tokenIdentifier) {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
@@ -99,14 +334,19 @@ class NetworkServiceProvider {
                    completion: @escaping (Result<MyPetResponse, Error>) -> Void) {
         
         guard let url = URL(string: "\(api)/api/v1/pets") else {
-            completion(.failure(NSError(domain: "Invalid URL", code: 0, userInfo: nil)))
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
             return
         }
         
         // Create multipart form data request
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+        
+        if let token = UserDefaults.standard.string(forKey: LoginInViewModel.tokenIdentifier) {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         
         let boundary = "Boundary-\(UUID().uuidString)"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
@@ -151,22 +391,28 @@ class NetworkServiceProvider {
         // Create and start task
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                completion(.failure(error))
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
                 return
             }
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                completion(.failure(NSError(domain: "Invalid response", code: 0, userInfo: nil)))
+                DispatchQueue.main.async {
+                    completion(.failure(NSError(domain: "Invalid response", code: 0, userInfo: nil)))
+                }
                 return
             }
             
             print("Create pet status code: \(httpResponse.statusCode)")
             
             guard (200...299).contains(httpResponse.statusCode), let data = data else {
-                if let data = data, let errorMessage = String(data: data, encoding: .utf8) {
-                    completion(.failure(NSError(domain: errorMessage, code: httpResponse.statusCode, userInfo: nil)))
-                } else {
-                    completion(.failure(NSError(domain: "Server error", code: httpResponse.statusCode, userInfo: nil)))
+                DispatchQueue.main.async {
+                    if let data = data, let errorMessage = String(data: data, encoding: .utf8) {
+                        completion(.failure(NSError(domain: errorMessage, code: httpResponse.statusCode, userInfo: nil)))
+                    } else {
+                        completion(.failure(NSError(domain: "Server error", code: httpResponse.statusCode, userInfo: nil)))
+                    }
                 }
                 return
             }
@@ -181,7 +427,9 @@ class NetworkServiceProvider {
                 if let jsonString = String(data: data, encoding: .utf8) {
                     print("Response: \(jsonString)")
                 }
-                completion(.failure(error))
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
             }
         }
         
@@ -192,79 +440,87 @@ class NetworkServiceProvider {
     
     func searchPet(photo: UIImage, species: String, color: String, gender: String?, breed: String?, completion: @escaping (Result<PetSearchResponse, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/pets/search") else {
-            completion(.failure(NetworkError.invalidURL))
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
             return
         }
         
         // Create multipart form data request
-                 var request = URLRequest(url: url)
-                 request.httpMethod = "POST"
-                 
-                 // Add authentication token to the header
-                 request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
-                 
-                 let boundary = "Boundary-\(UUID().uuidString)"
-                 request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-                 
-                 var body = Data()
-                 
-                 // Add photo
-                 if let imageData = photo.jpegData(compressionQuality: 0.7) {
-                     body.append("--\(boundary)\r\n".data(using: .utf8)!)
-                     body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
-                     body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
-                     body.append(imageData)
-                     body.append("\r\n".data(using: .utf8)!)
-                 }
-                 
-                 // Add species (required)
-                 body.append("--\(boundary)\r\n".data(using: .utf8)!)
-                 body.append("Content-Disposition: form-data; name=\"species\"\r\n\r\n".data(using: .utf8)!)
-                 body.append("\(species)\r\n".data(using: .utf8)!)
-                 
-                 // Add color (required)
-                 body.append("--\(boundary)\r\n".data(using: .utf8)!)
-                 body.append("Content-Disposition: form-data; name=\"color\"\r\n\r\n".data(using: .utf8)!)
-                 body.append("\(color)\r\n".data(using: .utf8)!)
-                 
-                 // Add gender (optional)
-                 if let gender = gender, !gender.isEmpty {
-                     body.append("--\(boundary)\r\n".data(using: .utf8)!)
-                     body.append("Content-Disposition: form-data; name=\"gender\"\r\n\r\n".data(using: .utf8)!)
-                     body.append("\(gender)\r\n".data(using: .utf8)!)
-                 }
-                 
-                 // Add breed (optional)
-                 if let breed = breed, !breed.isEmpty {
-                     body.append("--\(boundary)\r\n".data(using: .utf8)!)
-                     body.append("Content-Disposition: form-data; name=\"breed\"\r\n\r\n".data(using: .utf8)!)
-                     body.append("\(breed)\r\n".data(using: .utf8)!)
-                 }
-                 
-                 // End of form data
-                 body.append("--\(boundary)--\r\n".data(using: .utf8)!)
-                 
-                 request.httpBody = body
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        
+        // Add authentication token to the header
+        if let token = UserDefaults.standard.string(forKey: LoginInViewModel.tokenIdentifier) {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        
+        var body = Data()
+        
+        // Add photo
+        if let imageData = photo.jpegData(compressionQuality: 0.7) {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+            body.append(imageData)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        
+        // Add species (required)
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"species\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(species)\r\n".data(using: .utf8)!)
+        
+        // Add color (required)
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"color\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(color)\r\n".data(using: .utf8)!)
+        
+        // Add gender (optional)
+        if let gender = gender, !gender.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"gender\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(gender)\r\n".data(using: .utf8)!)
+        }
+        
+        // Add breed (optional)
+        if let breed = breed, !breed.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"breed\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(breed)\r\n".data(using: .utf8)!)
+        }
+        
+        // End of form data
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        request.httpBody = body
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             // Network error handling
             if let error = error {
-                if (error as NSError).domain == NSURLErrorDomain {
-                    switch (error as NSError).code {
-                    case NSURLErrorNotConnectedToInternet:
-                        completion(.failure(NetworkError.networkUnavailable))
-                    default:
+                DispatchQueue.main.async {
+                    if (error as NSError).domain == NSURLErrorDomain {
+                        switch (error as NSError).code {
+                        case NSURLErrorNotConnectedToInternet:
+                            completion(.failure(NetworkError.networkUnavailable))
+                        default:
+                            completion(.failure(NetworkError.unknownError(error)))
+                        }
+                    } else {
                         completion(.failure(NetworkError.unknownError(error)))
                     }
-                } else {
-                    completion(.failure(NetworkError.unknownError(error)))
                 }
                 return
             }
             
             // HTTP response handling
             guard let httpResponse = response as? HTTPURLResponse else {
-                completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                }
                 return
             }
             
@@ -274,56 +530,78 @@ class NetworkServiceProvider {
                 // Success case
                 break
             case 401:
-                completion(.failure(NetworkError.authenticationRequired))
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.authenticationRequired))
+                }
                 return
             case 400...499:
                 let message = data.flatMap { String(data: $0, encoding: .utf8) } ?? "Client error"
-                completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                }
                 return
             case 500...599:
                 let message = data.flatMap { String(data: $0, encoding: .utf8) } ?? "Server error"
-                completion(.failure(NetworkError.serverError(message)))
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.serverError(message)))
+                }
                 return
             default:
-                completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                }
                 return
             }
             
             // Data handling
             guard let data = data else {
-                completion(.failure(NetworkError.noData))
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.noData))
+                }
                 return
             }
             
             // Decoding
             do {
                 let searchResponse = try JSONDecoder().decode(PetSearchResponse.self, from: data)
-                completion(.success(searchResponse))
+                DispatchQueue.main.async {
+                    completion(.success(searchResponse))
+                }
             } catch {
                 print("❌ JSON Decoding error: \(error)")
                 if let jsonString = String(data: data, encoding: .utf8) {
                     print("Response data: \(jsonString)")
                 }
-                completion(.failure(NetworkError.decodingFailed(error)))
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.decodingFailed(error)))
+                }
             }
         }
         
         task.resume()
     }
+    
     // MARK: - User Profile
     
     func fetchUserProfile(completion: @escaping (UserProfile?) -> Void) {
-        guard let url = URL(string: "\(api)/users/me") else {
-            print("Invalid URL")
-            completion(nil)
+        guard let url = URL(string: "\(api)/api/v1/users/me") else {
+            DispatchQueue.main.async {
+                print("Invalid URL")
+                completion(nil)
+            }
             return
         }
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         
-        // Get token from UserDefaults or use the temporary one
-        let token = UserDefaults.standard.string(forKey: LoginInViewModel.tokenIdentifier) ?? authToken
+        guard let token = UserDefaults.standard.string(forKey: LoginInViewModel.tokenIdentifier) else {
+            DispatchQueue.main.async {
+                print("No token found")
+                completion(nil)
+            }
+            return
+        }
         
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -331,7 +609,9 @@ class NetworkServiceProvider {
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 print("Error: \(error.localizedDescription)")
-                completion(nil)
+                DispatchQueue.main.async {
+                    completion(nil)
+                }
                 return
             }
             
@@ -342,15 +622,21 @@ class NetworkServiceProvider {
                     do {
                         let decoder = JSONDecoder()
                         let userProfile = try decoder.decode(UserProfile.self, from: data)
-                        completion(userProfile)
+                        DispatchQueue.main.async {
+                            completion(userProfile)
+                        }
                     } catch {
                         print("Failed to decode JSON: \(error.localizedDescription)")
-                        completion(nil)
+                        DispatchQueue.main.async {
+                            completion(nil)
+                        }
                     }
                 } else {
                     let errorString = String(data: data ?? Data(), encoding: .utf8) ?? "Unknown error"
                     print("Server error: \(errorString)")
-                    completion(nil)
+                    DispatchQueue.main.async {
+                        completion(nil)
+                    }
                 }
             }
         }
@@ -358,19 +644,109 @@ class NetworkServiceProvider {
         task.resume()
     }
     
-    // File path: SDUPM/NetworkService/NetworkService.swift
-    // Add the following method to your NetworkServiceProvider class
-
-    // Добавьте это к классу NetworkServiceProvider в файле NetworkService.swift
-
-    // Добавьте это к классу NetworkServiceProvider в файле NetworkService.swift
-
-    func fetchLostPets(completion: @escaping ([LostPet]) -> Void) {
-        let urlString = "https://petradar.up.railway.app/pets/lost"
-        guard let url = URL(string: urlString) else {
-            print("❌ Невозможно сформировать URL")
+    // MARK: - Upload Pet Data
+    
+    func uploadPetData(name: String, age: String, breed: String, category: String, isLost: Bool, images: [UIImage], completion: @escaping (_ success: Bool) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/pets") else {
             DispatchQueue.main.async {
-                completion([])
+                completion(false)
+            }
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        
+        guard let token = UserDefaults.standard.string(forKey: LoginInViewModel.tokenIdentifier) else {
+            DispatchQueue.main.async {
+                completion(false)
+            }
+            return
+        }
+        
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        
+        var body = Data()
+        
+        // Add name
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"name\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(name)\r\n".data(using: .utf8)!)
+        
+        // Add age
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"age\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(age)\r\n".data(using: .utf8)!)
+        
+        // Add breed
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"breed\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(breed)\r\n".data(using: .utf8)!)
+        
+        // Add species
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"species\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(category)\r\n".data(using: .utf8)!)
+        
+        // Add status
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"status\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(isLost ? "lost" : "not_lost")\r\n".data(using: .utf8)!)
+        
+        // Add photos
+        for (index, image) in images.enumerated() {
+            if let imageData = image.jpegData(compressionQuality: 0.7) {
+                body.append("--\(boundary)\r\n".data(using: .utf8)!)
+                body.append("Content-Disposition: form-data; name=\"photos\"; filename=\"photo\(index).jpg\"\r\n".data(using: .utf8)!)
+                body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+                body.append(imageData)
+                body.append("\r\n".data(using: .utf8)!)
+            }
+        }
+        
+        // End of form data
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        request.httpBody = body
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("Error: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+                return
+            }
+            
+            if let httpResponse = response as? HTTPURLResponse {
+                DispatchQueue.main.async {
+                    completion(httpResponse.statusCode >= 200 && httpResponse.statusCode < 300)
+                }
+            } else {
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+            }
+        }
+        
+        task.resume()
+    }
+    
+    // MARK: - Fetch Lost Pets
+    
+    func fetchLostPets(page: Int = 1, limit: Int = 10, completion: @escaping (LostPetResponse?) -> Void) {
+        var urlComponents = URLComponents(string: "\(api)/api/v1/pets/lost")!
+        urlComponents.queryItems = [
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "limit", value: String(limit))
+        ]
+        
+        guard let url = urlComponents.url else {
+            DispatchQueue.main.async {
+                completion(nil)
             }
             return
         }
@@ -378,56 +754,61 @@ class NetworkServiceProvider {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         
-        // В реальном проекте добавьте токен авторизации при необходимости
-        // request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let token = UserDefaults.standard.string(forKey: LoginInViewModel.tokenIdentifier) {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                print("❌ Ошибка запроса: \(error.localizedDescription)")
+                print("Error: \(error.localizedDescription)")
                 DispatchQueue.main.async {
-                    completion([])
+                    completion(nil)
                 }
                 return
             }
 
             guard let httpResponse = response as? HTTPURLResponse,
                   (200...299).contains(httpResponse.statusCode) else {
-                print("❌ Ошибка ответа от сервера")
+                print("Server error")
                 DispatchQueue.main.async {
-                    completion([])
+                    completion(nil)
                 }
                 return
             }
 
             guard let data = data else {
-                print("❌ Нет данных")
+                print("No data")
                 DispatchQueue.main.async {
-                    completion([])
+                    completion(nil)
                 }
                 return
             }
 
             do {
-                // Декодируем как LostPetResponse
                 let decoder = JSONDecoder()
-                let response = try decoder.decode(LostPetResponse.self, from: data)
+                let result = try decoder.decode(LostPetResponse.self, from: data)
                 DispatchQueue.main.async {
-                    completion(response.items)
+                    completion(result)
                 }
             } catch {
-                print("❌ Ошибка декодирования: \(error)")
-                
-                // Для отладки выведем содержимое JSON
-                if let jsonString = String(data: data, encoding: .utf8) {
-                    print("Полученный JSON: \(jsonString)")
-                }
-                
+                print("Decoding error: \(error)")
                 DispatchQueue.main.async {
-                    completion([])
+                    completion(nil)
                 }
             }
         }
 
         task.resume()
+    }
+    
+    // Обратная совместимость с оригинальной версией
+    func fetchLostPets(completion: @escaping ([LostPet]) -> Void) {
+        fetchLostPets { response in
+            if let items = response?.items {
+                completion(items)
+            } else {
+                completion([])
+            }
+        }
     }
 }

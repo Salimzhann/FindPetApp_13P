@@ -1,9 +1,4 @@
-//
-//  LoginPage.swift
-//  SDUCanteenApp
-//
-//  Created by Manas Salimzhan on 12.09.2024.
-//
+// File path: SDUPM/Modules/RegistrationViews/LoginView.swift
 
 import UIKit
 
@@ -68,7 +63,6 @@ class LoginView: UIViewController {
     }
     
     func setupUI() {
-        
         view.backgroundColor = .white
         
         [passwordLabel, passwordTextField, emailLabel, LogInButton, loginText, emailTextField, signUpSpinner].forEach({
@@ -117,16 +111,23 @@ class LoginView: UIViewController {
     }
     
     @objc func logInButtonTapped() {
+        guard let email = emailTextField.text, !email.isEmpty,
+              let password = passwordTextField.text, !password.isEmpty else {
+            showAlert(title: "Error", message: "Please enter both email and password")
+            return
+        }
+        
         let loginAPI = LoginInViewModel()
         showLoadingOnButton()
-        loginAPI.sendUserData(email: emailTextField.text!, password: passwordTextField.text!) { responseString in
+        loginAPI.sendUserData(email: email, password: password) { responseString in
             DispatchQueue.main.async {
                 guard let response = responseString else { return }
                 if response == "Success" {
                     self.start()
+                } else {
+                    self.showAlert(title: "Login Failed", message: response)
+                    self.hideLoadingOnButton()
                 }
-                self.showAlert(title: "Something went wrong!", message: response)
-                self.hideLoadingOnButton()
             }
         }
     }

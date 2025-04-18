@@ -16,7 +16,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let scene = (scene as? UIWindowScene) else { return }
         window = UIWindow(windowScene: scene)
 //        let token = UserDefaults.standard.string(forKey: LoginView.isActive)
-        window?.rootViewController = UINavigationController(rootViewController: NavigationViewModel())
+        window?.rootViewController = UINavigationController(rootViewController: SignInView())
         
 //        if let token = token, token.isEmpty == false {
 //            window?.rootViewController = UINavigationController(rootViewController: NavigationViewModel())
