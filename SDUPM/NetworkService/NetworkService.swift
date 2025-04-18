@@ -853,4 +853,302 @@ class NetworkServiceProvider {
         
         task.resume()
     }
+    func fetchChats(completion: @escaping (Result<[Chat], Error>) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/chats") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        let request = createAuthorizedRequest(url: url, method: "GET")
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.unknownError(error)))
+                }
+                return
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                }
+                return
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                }
+                return
+            }
+            
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.noData))
+                }
+                return
+            }
+            
+            do {
+                // Парсим ответ в виде массива чатов
+                let chats = try JSONDecoder().decode([Chat].self, from: data)
+                
+                // Добавим моковые имена для демонстрации (в реальном приложении они должны приходить с сервера)
+                let mockedChats = chats.map { chat -> Chat in
+                    var updatedChat = chat
+                    updatedChat.otherUserName = "User \(chat.user2_id)"
+                    updatedChat.petName = "Pet \(chat.pet_id)"
+                    return updatedChat
+                }
+                
+                DispatchQueue.main.async {
+                    completion(.success(mockedChats))
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.decodingFailed(error)))
+                }
+            }
+        }
+        
+        task.resume()
+    }
+
+    /// Создание нового чата
+    func createChat(petId: Int, userId: Int, completion: @escaping (Result<Chat, Error>) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/chats") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        var request = createAuthorizedRequest(url: url, method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let createChatRequest = CreateChatRequest(pet_id: petId, user2_id: userId)
+        
+        do {
+            let jsonData = try JSONEncoder().encode(createChatRequest)
+            request.httpBody = jsonData
+            
+            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.unknownError(error)))
+                    }
+                    return
+                }
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                    }
+                    return
+                }
+                
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                    }
+                    return
+                }
+                
+                guard let data = data else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.noData))
+                    }
+                    return
+                }
+                
+                do {
+                    var chat = try JSONDecoder().decode(Chat.self, from: data)
+                    
+                    // Добавим моковые имена для демонстрации
+                    chat.otherUserName = "User \(chat.user2_id)"
+                    chat.petName = "Pet \(chat.pet_id)"
+                    
+                    DispatchQueue.main.async {
+                        completion(.success(chat))
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.decodingFailed(error)))
+                    }
+                }
+            }
+            
+            task.resume()
+        } catch {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.unknownError(error)))
+            }
+        }
+    }
+
+    /// Получение сообщений чата
+    func getChatMessages(chatId: Int, completion: @escaping (Result<[ChatMessage], Error>) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/chats/\(chatId)/messages") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        let request = createAuthorizedRequest(url: url, method: "GET")
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.unknownError(error)))
+                }
+                return
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                }
+                return
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                }
+                return
+            }
+            
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.noData))
+                }
+                return
+            }
+            
+            do {
+                let messages = try JSONDecoder().decode([ChatMessage].self, from: data)
+                DispatchQueue.main.async {
+                    completion(.success(messages))
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.decodingFailed(error)))
+                }
+            }
+        }
+        
+        task.resume()
+    }
+
+    /// Отправка сообщения
+    func sendMessage(chatId: Int, content: String, completion: @escaping (Result<ChatMessage, Error>) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/chats/\(chatId)/messages") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        var request = createAuthorizedRequest(url: url, method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let messageRequest = SendMessageRequest(content: content)
+        
+        do {
+            let jsonData = try JSONEncoder().encode(messageRequest)
+            request.httpBody = jsonData
+            
+            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.unknownError(error)))
+                    }
+                    return
+                }
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                    }
+                    return
+                }
+                
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                    }
+                    return
+                }
+                
+                guard let data = data else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.noData))
+                    }
+                    return
+                }
+                
+                do {
+                    let message = try JSONDecoder().decode(ChatMessage.self, from: data)
+                    DispatchQueue.main.async {
+                        completion(.success(message))
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.decodingFailed(error)))
+                    }
+                }
+            }
+            
+            task.resume()
+        } catch {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.unknownError(error)))
+            }
+        }
+    }
+
+    /// Удаление чата
+    func deleteChat(chatId: Int, completion: @escaping (Result<Bool, Error>) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/chats/\(chatId)") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        let request = createAuthorizedRequest(url: url, method: "DELETE")
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.unknownError(error)))
+                }
+                return
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                }
+                return
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                }
+                return
+            }
+            
+            DispatchQueue.main.async {
+                completion(.success(true))
+            }
+        }
+        
+        task.resume()
+    }
 }

@@ -137,7 +137,7 @@ class PetDetailInformationPresenter: IPetDetailInformationPresenter {
 //        provider.petDetailInfo(id: id) { [weak self] data in
 //            self?.view?.detailInfo = data
 //        }
-        self.view?.detailInfo = tempArray[id - 1]
+        self.view?.detailInfo = tempArray[id-1]
     }
     
     func gisLinkTaped(id: Int) {
