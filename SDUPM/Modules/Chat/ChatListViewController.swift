@@ -1,3 +1,5 @@
+// Путь: SDUPM/Modules/Chat/ChatListViewController.swift
+
 import UIKit
 import SnapKit
 
@@ -38,7 +40,7 @@ class ChatListViewController: UIViewController, ChatListViewProtocol {
     
     private let emptyStateLabel: UILabel = {
         let label = UILabel()
-        label.text = "No chats yet"
+        label.text = "У вас пока нет активных чатов"
         label.textAlignment = .center
         label.font = .systemFont(ofSize: 18, weight: .medium)
         label.textColor = .secondaryLabel
@@ -79,7 +81,7 @@ class ChatListViewController: UIViewController, ChatListViewProtocol {
     // MARK: - Setup
     
     private func setupUI() {
-        title = "Chats"
+        title = "Чаты"
         view.backgroundColor = .systemBackground
         
         view.addSubview(tableView)
@@ -164,7 +166,7 @@ class ChatListViewController: UIViewController, ChatListViewProtocol {
     
     func showError(message: String) {
         DispatchQueue.main.async {
-            let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+            let alert = UIAlertController(title: "Ошибка", message: message, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "OK", style: .default))
             self.present(alert, animated: true)
         }
@@ -336,7 +338,7 @@ class ChatListCell: UITableViewCell {
     
     func configure(with chat: Chat) {
         userNameLabel.text = chat.otherUserName
-        petNameLabel.text = "Pet: \(chat.petName)"
+        petNameLabel.text = "Питомец: \(chat.petName)"
         
         if let lastMessage = chat.last_message {
             lastMessageLabel.text = lastMessage.content
@@ -350,7 +352,7 @@ class ChatListCell: UITableViewCell {
                 timeLabel.text = ""
             }
         } else {
-            lastMessageLabel.text = "No messages yet"
+            lastMessageLabel.text = "Нет сообщений"
             timeLabel.text = ""
         }
         

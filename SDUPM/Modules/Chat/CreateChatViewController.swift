@@ -13,6 +13,7 @@ protocol CreateChatViewProtocol: AnyObject {
 class CreateChatViewController: UIViewController, CreateChatViewProtocol {
     
     weak var delegate: CreateChatDelegate?
+    private let presenter = CreateChatPresenter()
     
     // MARK: - UI Components
     
@@ -63,6 +64,8 @@ class CreateChatViewController: UIViewController, CreateChatViewProtocol {
         super.viewDidLoad()
         setupUI()
         setupActions()
+        setupPresenter()
+        hideKeyboardWhenTappedAround()
     }
     
     // MARK: - Setup
@@ -116,6 +119,20 @@ class CreateChatViewController: UIViewController, CreateChatViewProtocol {
         createButton.addTarget(self, action: #selector(createButtonTapped), for: .touchUpInside)
     }
     
+    private func setupPresenter() {
+        presenter.view = self
+    }
+    
+    private func hideKeyboardWhenTappedAround() {
+        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+    
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
+    
     // MARK: - Actions
     
     @objc private func cancelTapped() {
@@ -132,28 +149,7 @@ class CreateChatViewController: UIViewController, CreateChatViewProtocol {
         }
         
         showLoading()
-        
-        // Для демонстрации создаем моковый чат
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.hideLoading()
-            
-            // Создаем моковый чат
-            let mockChat = Chat(
-                id: Int.random(in: 100...999),
-                pet_id: petId,
-                user1_id: 1,  // Текущий пользователь
-                user2_id: userId,
-                created_at: ISO8601DateFormatter().string(from: Date()),
-                updated_at: ISO8601DateFormatter().string(from: Date()),
-                last_message: nil,
-                unread_count: 0,
-                otherUserName: "User \(userId)",
-                petName: "Pet \(petId)"
-            )
-            
-            self?.delegate?.didCreateChat(mockChat)
-            self?.dismiss(animated: true)
-        }
+        presenter.createChat(petId: petId, userId: userId)
     }
     
     private func showAlert(title: String, message: String) {

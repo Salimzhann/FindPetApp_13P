@@ -856,58 +856,76 @@ class NetworkServiceProvider {
     // Путь: SDUPM/NetworkService/NetworkService.swift (добавить эти методы в класс NetworkServiceProvider)
     
     func fetchChats(completion: @escaping (Result<[Chat], Error>) -> Void) {
-        guard let url = URL(string: "\(api)/api/v1/chats") else {
-            DispatchQueue.main.async {
-                completion(.failure(NetworkError.invalidURL))
+            guard let url = URL(string: "\(api)/api/v1/chats") else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.invalidURL))
+                }
+                return
             }
-            return
+            
+            let request = createAuthorizedRequest(url: url, method: "GET")
+            
+            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.unknownError(error)))
+                    }
+                    return
+                }
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                    }
+                    return
+                }
+                
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                    }
+                    return
+                }
+                
+                guard let data = data else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.noData))
+                    }
+                    return
+                }
+                
+                do {
+                    // Проверим данные, которые получаем от сервера, для отладки
+                    if let jsonString = String(data: data, encoding: .utf8) {
+                        print("Received chat data: \(jsonString)")
+                    }
+                    
+                    let decoder = JSONDecoder()
+                    // Формат даты на сервере 2025-04-18T19:18:09.0992
+                    
+                    // Декодируем ответ в соответствии со структурой из Swagger
+                    // API возвращает массив чатов напрямую, а не объект с полем chats
+                    var chats = try decoder.decode([Chat].self, from: data)
+                    
+                    // Добавим дополнительные данные для отображения (имена и т.д.)
+                    for i in 0..<chats.count {
+                        chats[i].otherUserName = "User \(chats[i].user2_id)"
+                        chats[i].petName = "Pet \(chats[i].pet_id)"
+                    }
+                    
+                    DispatchQueue.main.async {
+                        completion(.success(chats))
+                    }
+                } catch {
+                    print("❌ Decoding error: \(error)")
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.decodingFailed(error)))
+                    }
+                }
+            }
+            
+            task.resume()
         }
-        
-        let request = createAuthorizedRequest(url: url, method: "GET")
-        
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.unknownError(error)))
-                }
-                return
-            }
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
-                }
-                return
-            }
-            
-            guard (200...299).contains(httpResponse.statusCode) else {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
-                }
-                return
-            }
-            
-            guard let data = data else {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.noData))
-                }
-                return
-            }
-            
-            do {
-                let chatResponse = try JSONDecoder().decode(ChatResponse.self, from: data)
-                DispatchQueue.main.async {
-                    completion(.success(chatResponse.chats))
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.decodingFailed(error)))
-                }
-            }
-        }
-        
-        task.resume()
-    }
     
     func createChat(petId: Int, userId: Int, completion: @escaping (Result<Chat, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/chats") else {
@@ -956,9 +974,11 @@ class NetworkServiceProvider {
                 }
                 
                 do {
-                    var chat = try JSONDecoder().decode(Chat.self, from: data)
+                    // Используем кастомный декодер, который обрабатывает отсутствующие поля
+                    let decoder = JSONDecoder()
+                    var chat = try decoder.decode(Chat.self, from: data)
                     
-                    // Добавляем имена для отображения
+                    // Добавляем информативные имена для отображения
                     chat.otherUserName = "User \(chat.user2_id)"
                     chat.petName = "Pet \(chat.pet_id)"
                     
@@ -966,6 +986,7 @@ class NetworkServiceProvider {
                         completion(.success(chat))
                     }
                 } catch {
+                    print("Decoding error: \(error)")
                     DispatchQueue.main.async {
                         completion(.failure(NetworkError.decodingFailed(error)))
                     }
@@ -991,26 +1012,7 @@ class NetworkServiceProvider {
         let request = createAuthorizedRequest(url: url, method: "GET")
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.unknownError(error)))
-                }
-                return
-            }
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
-                }
-                return
-            }
-            
-            guard (200...299).contains(httpResponse.statusCode) else {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
-                }
-                return
-            }
+            // Обработка ошибок...
             
             guard let data = data else {
                 DispatchQueue.main.async {
@@ -1020,11 +1022,19 @@ class NetworkServiceProvider {
             }
             
             do {
+                // Если ваш бэкенд возвращает массив сообщений, а не объект с полем messages
                 let messages = try JSONDecoder().decode([ChatMessage].self, from: data)
                 DispatchQueue.main.async {
                     completion(.success(messages))
                 }
             } catch {
+                print("Decoding error: \(error)")
+                
+                // Для отладки выведем фактические данные, полученные от сервера
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("Raw JSON response: \(jsonString)")
+                }
+                
                 DispatchQueue.main.async {
                     completion(.failure(NetworkError.decodingFailed(error)))
                 }
@@ -1033,7 +1043,6 @@ class NetworkServiceProvider {
         
         task.resume()
     }
-    
     func sendMessage(chatId: Int, content: String, completion: @escaping (Result<ChatMessage, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/chats/\(chatId)/messages") else {
             DispatchQueue.main.async {

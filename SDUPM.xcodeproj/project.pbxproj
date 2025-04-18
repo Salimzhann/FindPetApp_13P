@@ -40,10 +40,10 @@
 		045C30722DB2CC97007A0ED0 /* ChatListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C30712DB2CC94007A0ED0 /* ChatListViewController.swift */; };
 		045C30742DB2CCBA007A0ED0 /* ChatListPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C30732DB2CCB7007A0ED0 /* ChatListPresenter.swift */; };
 		045C30762DB2CCCC007A0ED0 /* CreateChatViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C30752DB2CCCB007A0ED0 /* CreateChatViewController.swift */; };
-		045C30792DB2CCE0007A0ED0 /* CreateChatPresenter.swift in Resources */ = {isa = PBXBuildFile; fileRef = 045C30782DB2CCE0007A0ED0 /* CreateChatPresenter.swift */; };
 		045C307B2DB2CD24007A0ED0 /* ChatViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C307A2DB2CD22007A0ED0 /* ChatViewController.swift */; };
 		045C307D2DB2CD3A007A0ED0 /* ChatPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C307C2DB2CD39007A0ED0 /* ChatPresenter.swift */; };
 		045C307F2DB2D4DA007A0ED0 /* MessageCells.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C307E2DB2D4D7007A0ED0 /* MessageCells.swift */; };
+		045C30812DB2DBA6007A0ED0 /* CreateChatPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C30802DB2DBA6007A0ED0 /* CreateChatPresenter.swift */; };
 		19213FB42CC3C04B006D8BE1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FB32CC3C04B006D8BE1 /* AppDelegate.swift */; };
 		19213FB62CC3C04B006D8BE1 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FB52CC3C04B006D8BE1 /* SceneDelegate.swift */; };
 		19213FB82CC3C04B006D8BE1 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FB72CC3C04B006D8BE1 /* SignInView.swift */; };
@@ -91,10 +91,10 @@
 		045C30712DB2CC94007A0ED0 /* ChatListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListViewController.swift; sourceTree = "<group>"; };
 		045C30732DB2CCB7007A0ED0 /* ChatListPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListPresenter.swift; sourceTree = "<group>"; };
 		045C30752DB2CCCB007A0ED0 /* CreateChatViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateChatViewController.swift; sourceTree = "<group>"; };
-		045C30782DB2CCE0007A0ED0 /* CreateChatPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateChatPresenter.swift; sourceTree = "<group>"; };
 		045C307A2DB2CD22007A0ED0 /* ChatViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewController.swift; sourceTree = "<group>"; };
 		045C307C2DB2CD39007A0ED0 /* ChatPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatPresenter.swift; sourceTree = "<group>"; };
 		045C307E2DB2D4D7007A0ED0 /* MessageCells.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageCells.swift; sourceTree = "<group>"; };
+		045C30802DB2DBA6007A0ED0 /* CreateChatPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateChatPresenter.swift; sourceTree = "<group>"; };
 		19213FB02CC3C04B006D8BE1 /* SDUPM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SDUPM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		19213FB32CC3C04B006D8BE1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		19213FB52CC3C04B006D8BE1 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -223,7 +223,7 @@
 				045C307E2DB2D4D7007A0ED0 /* MessageCells.swift */,
 				045C307C2DB2CD39007A0ED0 /* ChatPresenter.swift */,
 				045C307A2DB2CD22007A0ED0 /* ChatViewController.swift */,
-				045C30782DB2CCE0007A0ED0 /* CreateChatPresenter.swift */,
+				045C30802DB2DBA6007A0ED0 /* CreateChatPresenter.swift */,
 				045C30752DB2CCCB007A0ED0 /* CreateChatViewController.swift */,
 				045C30732DB2CCB7007A0ED0 /* ChatListPresenter.swift */,
 				045C30712DB2CC94007A0ED0 /* ChatListViewController.swift */,
@@ -402,7 +402,6 @@
 			files = (
 				19213FBD2CC3C04C006D8BE1 /* Assets.xcassets in Resources */,
 				19213FC02CC3C04C006D8BE1 /* Base in Resources */,
-				045C30792DB2CCE0007A0ED0 /* CreateChatPresenter.swift in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -421,6 +420,7 @@
 				045C30742DB2CCBA007A0ED0 /* ChatListPresenter.swift in Sources */,
 				19213FD52CC4E4A7006D8BE1 /* MainView.swift in Sources */,
 				045000352D9C084B004EE34A /* MyPetViewController.swift in Sources */,
+				045C30812DB2DBA6007A0ED0 /* CreateChatPresenter.swift in Sources */,
 				045000412D9C2FE6004EE34A /* PetDetailInformationViewController.swift in Sources */,
 				040907B22DB2A08F00862F6A /* LostPet.swift in Sources */,
 				045000502D9D2022004EE34A /* MyPetCell.swift in Sources */,

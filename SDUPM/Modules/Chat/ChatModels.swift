@@ -6,7 +6,6 @@
 //
 
 import Foundation
-
 struct Chat: Codable {
     let id: Int
     let pet_id: Int
@@ -42,6 +41,7 @@ struct ChatMessage: Codable {
         return ""
     }
 }
+
 struct ChatResponse: Codable {
     let chats: [Chat]
     let total: Int
