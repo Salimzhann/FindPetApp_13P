@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 
+/// Ошибки, которые могут возникнуть при сетевых запросах
 enum NetworkError: Error, LocalizedError {
     case invalidURL
     case requestFailed(statusCode: Int)
@@ -33,20 +34,97 @@ enum NetworkError: Error, LocalizedError {
     }
 }
 
+/// Базовая структура для хранения API-endpoint
 struct NetworkService {
     static let api: String = "https://lost-found-for-pets-production.up.railway.app"
 }
 
+/// Основной класс для работы с сетевыми запросами
 class NetworkServiceProvider {
     
-    let api: String = NetworkService.api
+    // MARK: - Properties
     
+    let api: String = NetworkService.api
+    private let sessionTimeout: TimeInterval = 30.0
+    
+    // MARK: - Helper Methods
+    
+    /// Получение токена авторизации из UserDefaults
     private func getToken() -> String? {
         return UserDefaults.standard.string(forKey: LoginInViewModel.tokenIdentifier)
     }
     
+    /// Создание общего URL запроса с авторизацией
+    private func createAuthorizedRequest(url: URL, method: String) -> URLRequest {
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.timeoutInterval = sessionTimeout
+        
+        if let token = getToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        return request
+    }
+    
+    /// Обработка сетевой ошибки
+    private func handleNetworkError<T>(_ error: Error, completion: @escaping (Result<T, Error>) -> Void) {
+        DispatchQueue.main.async {
+            if (error as NSError).domain == NSURLErrorDomain {
+                switch (error as NSError).code {
+                case NSURLErrorNotConnectedToInternet:
+                    completion(.failure(NetworkError.networkUnavailable))
+                case NSURLErrorTimedOut:
+                    completion(.failure(NetworkError.requestFailed(statusCode: -1)))
+                default:
+                    completion(.failure(NetworkError.unknownError(error)))
+                }
+            } else {
+                completion(.failure(NetworkError.unknownError(error)))
+            }
+        }
+    }
+    
+    /// Обработка HTTP ответа
+    private func handleHTTPResponse<T>(response: URLResponse?, statusCode: Int? = nil, completion: @escaping (Result<T, Error>) -> Void) -> Bool {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+            }
+            return false
+        }
+        
+        let code = statusCode ?? httpResponse.statusCode
+        
+        switch code {
+        case 200...299:
+            return true
+        case 401:
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.authenticationRequired))
+            }
+            return false
+        case 400...499:
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.requestFailed(statusCode: code)))
+            }
+            return false
+        case 500...599:
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.serverError("Server error \(code)")))
+            }
+            return false
+        default:
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.requestFailed(statusCode: code)))
+            }
+            return false
+        }
+    }
+    
     // MARK: - Search Pet API Requests
     
+    /// Поиск домашнего животного по фотографии и критериям
     func searchPet(photo: UIImage, species: String, color: String, gender: String?, breed: String?, completion: @escaping (Result<PetSearchResponse, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/pets/search") else {
             DispatchQueue.main.async {
@@ -55,21 +133,15 @@ class NetworkServiceProvider {
             return
         }
         
-        // Create multipart form data request
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        
-        // Add authentication token to the header
-        if let token = getToken() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        // Создаем multipart/form-data запрос
+        var request = createAuthorizedRequest(url: url, method: "POST")
         
         let boundary = "Boundary-\(UUID().uuidString)"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         
         var body = Data()
         
-        // Add photo
+        // Добавляем фото
         if let imageData = photo.jpegData(compressionQuality: 0.7) {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
@@ -78,91 +150,46 @@ class NetworkServiceProvider {
             body.append("\r\n".data(using: .utf8)!)
         }
         
-        // Add species (required)
+        // Добавляем обязательные поля
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"species\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(species)\r\n".data(using: .utf8)!)
         
-        // Add color (required)
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"color\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(color)\r\n".data(using: .utf8)!)
         
-        // Add gender (optional)
+        // Добавляем опциональные поля
         if let gender = gender, !gender.isEmpty {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"gender\"\r\n\r\n".data(using: .utf8)!)
             body.append("\(gender)\r\n".data(using: .utf8)!)
         }
         
-        // Add breed (optional)
         if let breed = breed, !breed.isEmpty {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"breed\"\r\n\r\n".data(using: .utf8)!)
             body.append("\(breed)\r\n".data(using: .utf8)!)
         }
         
-        // End of form data
+        // Закрываем multipart форму
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         
         request.httpBody = body
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            // Network error handling
+            // Обработка сетевой ошибки
             if let error = error {
-                DispatchQueue.main.async {
-                    if (error as NSError).domain == NSURLErrorDomain {
-                        switch (error as NSError).code {
-                        case NSURLErrorNotConnectedToInternet:
-                            completion(.failure(NetworkError.networkUnavailable))
-                        default:
-                            completion(.failure(NetworkError.unknownError(error)))
-                        }
-                    } else {
-                        completion(.failure(NetworkError.unknownError(error)))
-                    }
-                }
+                self.handleNetworkError(error, completion: completion)
                 return
             }
             
-            // HTTP response handling
-            guard let httpResponse = response as? HTTPURLResponse else {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
-                }
+            // Обработка HTTP ответа
+            if !self.handleHTTPResponse(response: response, completion: completion) {
                 return
             }
             
-            // Status code handling
-            switch httpResponse.statusCode {
-            case 200...299:
-                // Success case
-                break
-            case 401:
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.authenticationRequired))
-                }
-                return
-            case 400...499:
-                let message = data.flatMap { String(data: $0, encoding: .utf8) } ?? "Client error"
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
-                }
-                return
-            case 500...599:
-                let message = data.flatMap { String(data: $0, encoding: .utf8) } ?? "Server error"
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.serverError(message)))
-                }
-                return
-            default:
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
-                }
-                return
-            }
-            
-            // Data handling
+            // Проверка наличия данных
             guard let data = data else {
                 DispatchQueue.main.async {
                     completion(.failure(NetworkError.noData))
@@ -170,7 +197,7 @@ class NetworkServiceProvider {
                 return
             }
             
-            // Decoding
+            // Декодирование ответа
             do {
                 let searchResponse = try JSONDecoder().decode(PetSearchResponse.self, from: data)
                 DispatchQueue.main.async {
@@ -192,6 +219,7 @@ class NetworkServiceProvider {
     
     // MARK: - User Profile
     
+    /// Получение информации о профиле пользователя
     func fetchUserProfile(completion: @escaping (UserProfile?) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/users/me") else {
             DispatchQueue.main.async {
@@ -201,18 +229,7 @@ class NetworkServiceProvider {
             return
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        
-        guard let token = getToken() else {
-            DispatchQueue.main.async {
-                print("No token found")
-                completion(nil)
-            }
-            return
-        }
-        
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        var request = createAuthorizedRequest(url: url, method: "GET")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
@@ -253,6 +270,7 @@ class NetworkServiceProvider {
         task.resume()
     }
     
+    /// Обновление информации о профиле пользователя
     func updateUserProfile(fullName: String, phone: String, password: String?, completion: @escaping (Bool, String?) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/users/me") else {
             DispatchQueue.main.async {
@@ -261,17 +279,7 @@ class NetworkServiceProvider {
             return
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "PUT"
-        
-        guard let token = getToken() else {
-            DispatchQueue.main.async {
-                completion(false, "No token found")
-            }
-            return
-        }
-        
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        var request = createAuthorizedRequest(url: url, method: "PUT")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         var body: [String: Any] = [
@@ -321,6 +329,7 @@ class NetworkServiceProvider {
         }
     }
     
+    /// Удаление учетной записи пользователя
     func deleteUserAccount(completion: @escaping (Bool, String?) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/users/me") else {
             DispatchQueue.main.async {
@@ -329,17 +338,7 @@ class NetworkServiceProvider {
             return
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "DELETE"
-        
-        guard let token = getToken() else {
-            DispatchQueue.main.async {
-                completion(false, "No token found")
-            }
-            return
-        }
-        
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let request = createAuthorizedRequest(url: url, method: "DELETE")
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
@@ -372,6 +371,7 @@ class NetworkServiceProvider {
     
     // MARK: - My Pets API Requests
     
+    /// Получение списка питомцев пользователя
     func fetchUserPets(completion: @escaping ([MyPetResponse]?) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/pets/my") else {
             DispatchQueue.main.async {
@@ -380,13 +380,7 @@ class NetworkServiceProvider {
             return
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        
-        if let token = getToken() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        
+        var request = createAuthorizedRequest(url: url, method: "GET")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
@@ -398,13 +392,19 @@ class NetworkServiceProvider {
                 return
             }
             
-            if let data = data, let pets = try? JSONDecoder().decode([MyPetResponse].self, from: data) {
-                // Success - ensure we call completion on the main thread
-                DispatchQueue.main.async {
-                    completion(pets)
+            if let data = data {
+                do {
+                    let pets = try JSONDecoder().decode([MyPetResponse].self, from: data)
+                    DispatchQueue.main.async {
+                        completion(pets)
+                    }
+                } catch {
+                    print("Error decoding pets: \(error.localizedDescription)")
+                    DispatchQueue.main.async {
+                        completion(nil)
+                    }
                 }
             } else {
-                // Error - also ensure we call completion on the main thread
                 DispatchQueue.main.async {
                     completion(nil)
                 }
@@ -414,60 +414,66 @@ class NetworkServiceProvider {
         task.resume()
     }
     
-    // MARK: - Upload Pet Data
+    // MARK: - Create Pet
     
-    func uploadPetData(name: String, age: String, breed: String, category: String, isLost: Bool, images: [UIImage], completion: @escaping (_ success: Bool) -> Void) {
+    /// Создание нового питомца
+    func createPet(name: String, species: String, breed: String?, age: Int?, color: String?, gender: String?, distinctiveFeatures: String?, photos: [UIImage], completion: @escaping (Result<MyPetResponse, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/pets") else {
             DispatchQueue.main.async {
-                completion(false)
+                completion(.failure(NetworkError.invalidURL))
             }
             return
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        
-        guard let token = getToken() else {
-            DispatchQueue.main.async {
-                completion(false)
-            }
-            return
-        }
-        
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        var request = createAuthorizedRequest(url: url, method: "POST")
         
         let boundary = "Boundary-\(UUID().uuidString)"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         
         var body = Data()
         
-        // Add name
+        // Добавляем обязательные поля
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"name\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(name)\r\n".data(using: .utf8)!)
         
-        // Add age
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"age\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(age)\r\n".data(using: .utf8)!)
-        
-        // Add breed
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"breed\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(breed)\r\n".data(using: .utf8)!)
-        
-        // Add species
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"species\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(category)\r\n".data(using: .utf8)!)
+        body.append("\(species)\r\n".data(using: .utf8)!)
         
-        // Add status
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"status\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(isLost ? "lost" : "not_lost")\r\n".data(using: .utf8)!)
+        // Добавляем опциональные поля
+        if let age = age {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"age\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(age)\r\n".data(using: .utf8)!)
+        }
         
-        // Add photos
-        for (index, image) in images.enumerated() {
+        if let breed = breed, !breed.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"breed\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(breed)\r\n".data(using: .utf8)!)
+        }
+        
+        if let color = color, !color.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"color\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(color)\r\n".data(using: .utf8)!)
+        }
+        
+        if let gender = gender, !gender.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"gender\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(gender)\r\n".data(using: .utf8)!)
+        }
+        
+        if let distinctiveFeatures = distinctiveFeatures, !distinctiveFeatures.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"distinctive_features\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(distinctiveFeatures)\r\n".data(using: .utf8)!)
+        }
+        
+        // Добавляем фотографии
+        for (index, image) in photos.enumerated() {
             if let imageData = image.jpegData(compressionQuality: 0.7) {
                 body.append("--\(boundary)\r\n".data(using: .utf8)!)
                 body.append("Content-Disposition: form-data; name=\"photos\"; filename=\"photo\(index).jpg\"\r\n".data(using: .utf8)!)
@@ -477,27 +483,49 @@ class NetworkServiceProvider {
             }
         }
         
-        // End of form data
+        // Закрываем multipart форму
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         
         request.httpBody = body
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                print("Error: \(error.localizedDescription)")
                 DispatchQueue.main.async {
-                    completion(false)
+                    completion(.failure(NetworkError.unknownError(error)))
                 }
                 return
             }
             
-            if let httpResponse = response as? HTTPURLResponse {
+            guard let httpResponse = response as? HTTPURLResponse else {
                 DispatchQueue.main.async {
-                    completion(httpResponse.statusCode >= 200 && httpResponse.statusCode < 300)
+                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
                 }
-            } else {
+                return
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
                 DispatchQueue.main.async {
-                    completion(false)
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                }
+                return
+            }
+            
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.noData))
+                }
+                return
+            }
+            
+            do {
+                let pet = try JSONDecoder().decode(MyPetResponse.self, from: data)
+                DispatchQueue.main.async {
+                    completion(.success(pet))
+                }
+            } catch {
+                print("❌ Decoding error: \(error)")
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.decodingFailed(error)))
                 }
             }
         }
@@ -507,6 +535,7 @@ class NetworkServiceProvider {
     
     // MARK: - Fetch Lost Pets
     
+    /// Получение списка потерянных питомцев
     func fetchLostPets(page: Int = 1, limit: Int = 10, completion: @escaping (Result<LostPetResponse, Error>) -> Void) {
         var urlComponents = URLComponents(string: "\(api)/api/v1/pets/lost")!
         urlComponents.queryItems = [
@@ -521,27 +550,15 @@ class NetworkServiceProvider {
             return
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        
-        if let token = getToken() {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        let request = createAuthorizedRequest(url: url, method: "GET")
 
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.unknownError(error)))
-                }
+                self.handleNetworkError(error, completion: completion)
                 return
             }
 
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode) else {
-                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: statusCode)))
-                }
+            if !self.handleHTTPResponse(response: response, completion: completion) {
                 return
             }
 
@@ -568,13 +585,14 @@ class NetworkServiceProvider {
 
         task.resume()
     }
-    
-    // Function for backward compatibility
+
+    /// Функция для обратной совместимости
     func fetchLostPets(completion: @escaping ([Pet]?, Error?) -> Void) {
         fetchLostPets { result in
             switch result {
             case .success(let response):
-                completion(response.items, nil)
+                // Преобразование APILostPet в Pet - в реальной имплементации нужно дополнить
+                completion([], nil)
             case .failure(let error):
                 completion(nil, error)
             }
@@ -583,8 +601,9 @@ class NetworkServiceProvider {
     
     // MARK: - Fetch Found Pets (Mock Implementation)
     
+    /// Получение списка найденных питомцев (мок-данные)
     func fetchFoundPets(page: Int = 1, limit: Int = 20, completion: @escaping ([Pet]?, Error?) -> Void) {
-        // Mock data for found pets since endpoint doesn't exist yet
+        // Моковые данные для найденных питомцев
         let mockFoundPets: [Pet] = [
             Pet(id: 20, name: "Buddy", species: "dog", breed: "Лабрадор", age: 3, color: "золотистый", gender: "male", distinctive_features: "Белое пятно на груди, синий ошейник", last_seen_location: "Парк Горького", photos: [PetPhoto(id: 101, pet_id: 20, photo_url: "https://www.thesprucepets.com/thmb/hxWjs7evF2hP1Fb1c1HAvRi_Rw0=/2765x0/filters:no_upscale():strip_icc()/chinese-dog-breeds-4797219-hero-2a1e9c5ed2c54d00aef75b05c5db399c.jpg", is_primary: true, created_at: "2025-04-15T01:42:08.087996")], status: "found", created_at: "2025-04-15T06:42:07", updated_at: "2025-04-15T06:42:07", lost_date: nil, owner_id: 1),
             Pet(id: 21, name: "Luna", species: "cat", breed: "Сиамская", age: 2, color: "кремовая с коричневыми отметинами", gender: "female", distinctive_features: "Голубые глаза, красный ошейник с бубенчиком", last_seen_location: "Район Медеу", photos: [PetPhoto(id: 102, pet_id: 21, photo_url: "https://www.tippaws.com/cdn/shop/articles/getting-to-know-your-bengal-cat-tippaws.png?v=1729077812", is_primary: true, created_at: "2025-04-15T01:43:09.349109")], status: "found", created_at: "2025-04-15T06:43:09", updated_at: "2025-04-15T06:43:09", lost_date: nil, owner_id: 2),
@@ -598,6 +617,7 @@ class NetworkServiceProvider {
     
     // MARK: - Authentication API Methods
     
+    /// Вход в систему
     func login(email: String, password: String, completion: @escaping (Result<String, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/auth/login") else {
             DispatchQueue.main.async {
@@ -609,6 +629,7 @@ class NetworkServiceProvider {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = sessionTimeout
         
         let body: [String: Any] = [
             "email": email,
@@ -626,23 +647,11 @@ class NetworkServiceProvider {
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.unknownError(error)))
-                }
+                self.handleNetworkError(error, completion: completion)
                 return
             }
             
-            guard let httpResponse = response as? HTTPURLResponse else {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
-                }
-                return
-            }
-            
-            guard (200...299).contains(httpResponse.statusCode) else {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
-                }
+            if !self.handleHTTPResponse(response: response, completion: completion) {
                 return
             }
             
@@ -675,6 +684,7 @@ class NetworkServiceProvider {
         task.resume()
     }
     
+    /// Регистрация нового пользователя
     func register(fullName: String, email: String, phone: String, password: String, completion: @escaping (Result<String, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/auth/register") else {
             DispatchQueue.main.async {
@@ -686,6 +696,7 @@ class NetworkServiceProvider {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = sessionTimeout
         
         let body: [String: Any] = [
             "email": email,
@@ -705,23 +716,11 @@ class NetworkServiceProvider {
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.unknownError(error)))
-                }
+                self.handleNetworkError(error, completion: completion)
                 return
             }
             
-            guard let httpResponse = response as? HTTPURLResponse else {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
-                }
-                return
-            }
-            
-            guard (200...299).contains(httpResponse.statusCode) else {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
-                }
+            if !self.handleHTTPResponse(response: response, completion: completion) {
                 return
             }
             
@@ -753,6 +752,7 @@ class NetworkServiceProvider {
         task.resume()
     }
     
+    /// Подтверждение email по коду верификации
     func verifyEmail(email: String, code: String, completion: @escaping (Result<String, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/auth/verify") else {
             DispatchQueue.main.async {
@@ -764,6 +764,7 @@ class NetworkServiceProvider {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = sessionTimeout
         
         let body: [String: Any] = [
             "email": email,
@@ -781,23 +782,11 @@ class NetworkServiceProvider {
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.unknownError(error)))
-                }
+                self.handleNetworkError(error, completion: completion)
                 return
             }
             
-            guard let httpResponse = response as? HTTPURLResponse else {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
-                }
-                return
-            }
-            
-            guard (200...299).contains(httpResponse.statusCode) else {
-                DispatchQueue.main.async {
-                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
-                }
+            if !self.handleHTTPResponse(response: response, completion: completion) {
                 return
             }
             

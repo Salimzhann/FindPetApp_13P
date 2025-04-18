@@ -9,15 +9,15 @@ import Foundation
 
 // Основная структура ответа
 struct LostPetResponse: Codable {
-    let items: [LostPet]
+    let items: [APILostPet]
     let total: Int
     let page: Int
     let limit: Int
     let pages: Int
 }
 
-// Модель потерянного питомца
-struct LostPet: Codable {
+// Модель потерянного питомца (API)
+struct APILostPet: Codable {
     let id: String
     let name: String
     let species: String
@@ -30,5 +30,17 @@ struct LostPet: Codable {
     var mainPhotoURL: URL? {
         guard let photoUrlString = photo_url else { return nil }
         return URL(string: photoUrlString)
+    }
+    
+    // Конвертация API модели в UI модель
+    func toUIModel() -> LostPet {
+        return LostPet(
+            id: Int(id) ?? 0,
+            name: name,
+            age: nil, // API не предоставляет возраст
+            gender: nil, // API не предоставляет пол
+            species: species,
+            imageUrl: photo_url
+        )
     }
 }

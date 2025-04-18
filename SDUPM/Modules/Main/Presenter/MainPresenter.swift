@@ -20,7 +20,8 @@ class MainPresenter: MainPresenterProtocol {
                 
                 switch result {
                 case .success(let response):
-                    let lostPets = response.items.map { LostPet(from: $0) }
+                    // Преобразуем APILostPet в LostPet
+                    let lostPets = response.items.map { $0.toUIModel() }
                     self?.view?.updatePets(lostPets)
                 case .failure(let error):
                     self?.view?.showError(message: error.localizedDescription)
