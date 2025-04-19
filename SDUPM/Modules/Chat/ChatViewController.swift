@@ -290,7 +290,12 @@ class ChatViewController: UIViewController {
         
         let newHeight = min(max(newSize.height, 36), 100)
         
-        messageTextView.snp.updateConstraints { make in
+        // Используем remakeConstraints вместо updateConstraints для messageTextView
+        messageTextView.snp.remakeConstraints { make in
+            make.leading.equalToSuperview().offset(16)
+            make.top.equalToSuperview().offset(10)
+            make.bottom.equalToSuperview().offset(-10)
+            make.trailing.equalTo(sendButton.snp.leading).offset(-10)
             make.height.greaterThanOrEqualTo(newHeight).priority(.high)
         }
         
@@ -301,8 +306,11 @@ class ChatViewController: UIViewController {
             make.height.greaterThanOrEqualTo(containerHeight)
         }
         
+        // Обновляем UI на main thread
         DispatchQueue.main.async {
-            self.view.layoutIfNeeded()
+            UIView.animate(withDuration: 0.1) {
+                self.view.layoutIfNeeded()
+            }
         }
     }
     
@@ -326,10 +334,15 @@ class ChatViewController: UIViewController {
             }
             
             self.userStatusView.isHidden = false
-            self.userStatusView.snp.updateConstraints { make in
-                make.width.equalTo(self.userStatusLabel.intrinsicContentSize.width + 24)
-            }
             
+            // Обновляем ширину, когда текст готов
+            let labelWidth = self.userStatusLabel.intrinsicContentSize.width
+            self.userStatusView.snp.remakeConstraints { make in
+                make.centerX.equalToSuperview()
+                make.top.equalTo(self.view.safeAreaLayoutGuide).offset(4)
+                make.height.equalTo(22)
+                make.width.equalTo(labelWidth + 24)
+            }
         }
     }
     
