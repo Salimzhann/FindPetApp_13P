@@ -55,12 +55,7 @@ class ChatListViewController: UIViewController, ChatListViewProtocol {
         return imageView
     }()
     
-    private let createChatButton: UIButton = {
-        let button = UIButton(type: .system)
-        button.setImage(UIImage(systemName: "square.and.pencil"), for: .normal)
-        button.tintColor = .systemGreen
-        return button
-    }()
+    private let refreshControl = UIRefreshControl()
     
     // MARK: - Lifecycle
     
@@ -69,13 +64,14 @@ class ChatListViewController: UIViewController, ChatListViewProtocol {
         setupUI()
         setupTableView()
         setupNavigation()
+        setupRefreshControl()
         
         presenter.view = self
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        presenter.fetchChats()
+        fetchChats()
     }
     
     // MARK: - Setup
@@ -123,8 +119,17 @@ class ChatListViewController: UIViewController, ChatListViewProtocol {
     }
     
     private func setupNavigation() {
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: createChatButton)
-        createChatButton.addTarget(self, action: #selector(createChatTapped), for: .touchUpInside)
+        navigationItem.rightBarButtonItem = UIBarButtonItem(
+            barButtonSystemItem: .compose,
+            target: self,
+            action: #selector(createChatTapped)
+        )
+    }
+    
+    private func setupRefreshControl() {
+        refreshControl.attributedTitle = NSAttributedString(string: "Обновление...")
+        refreshControl.addTarget(self, action: #selector(refreshData), for: .valueChanged)
+        tableView.refreshControl = refreshControl
     }
     
     // MARK: - Actions
@@ -134,6 +139,14 @@ class ChatListViewController: UIViewController, ChatListViewProtocol {
         createChatVC.delegate = self
         let navController = UINavigationController(rootViewController: createChatVC)
         present(navController, animated: true)
+    }
+    
+    @objc private func refreshData() {
+        fetchChats()
+    }
+    
+    private func fetchChats() {
+        presenter.fetchChats()
     }
     
     private func updateEmptyState() {
@@ -147,29 +160,29 @@ class ChatListViewController: UIViewController, ChatListViewProtocol {
         self.chats = chats
         tableView.reloadData()
         updateEmptyState()
+        refreshControl.endRefreshing()
     }
     
     func showLoading() {
-        DispatchQueue.main.async {
-            self.activityIndicator.startAnimating()
-            self.tableView.isHidden = true
-            self.emptyStateView.isHidden = true
+        if !refreshControl.isRefreshing {
+            activityIndicator.startAnimating()
+            tableView.isHidden = true
+            emptyStateView.isHidden = true
         }
     }
     
     func hideLoading() {
-        DispatchQueue.main.async {
-            self.activityIndicator.stopAnimating()
-            self.updateEmptyState()
-        }
+        activityIndicator.stopAnimating()
+        updateEmptyState()
+        refreshControl.endRefreshing()
     }
     
     func showError(message: String) {
-        DispatchQueue.main.async {
-            let alert = UIAlertController(title: "Ошибка", message: message, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
-            self.present(alert, animated: true)
-        }
+        refreshControl.endRefreshing()
+        
+        let alert = UIAlertController(title: "Ошибка", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 }
 
@@ -201,7 +214,7 @@ extension ChatListViewController: UITableViewDataSource, UITableViewDelegate {
 
 extension ChatListViewController: CreateChatDelegate {
     func didCreateChat(_ chat: Chat) {
-        presenter.fetchChats()
+        presenter.fetchChats() // Refresh chat list to include the new chat
     }
 }
 
@@ -221,7 +234,7 @@ class ChatListCell: UITableViewCell {
         imageView.clipsToBounds = true
         imageView.backgroundColor = .systemGray6
         imageView.layer.cornerRadius = 25
-        imageView.image = UIImage(systemName: "person.circle.fill")
+        imageView.image = UIImage(systemName: "pawprint.circle.fill")
         imageView.tintColor = .systemGray3
         return imageView
     }()
@@ -346,7 +359,13 @@ class ChatListCell: UITableViewCell {
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
             if let date = dateFormatter.date(from: lastMessage.created_at) {
-                dateFormatter.dateFormat = "HH:mm"
+                // Проверяем, сегодня ли это было
+                let calendar = Calendar.current
+                if calendar.isDateInToday(date) {
+                    dateFormatter.dateFormat = "HH:mm"
+                } else {
+                    dateFormatter.dateFormat = "dd.MM"
+                }
                 timeLabel.text = dateFormatter.string(from: date)
             } else {
                 timeLabel.text = ""
@@ -358,9 +377,28 @@ class ChatListCell: UITableViewCell {
         
         if chat.unread_count > 0 {
             unreadBadge.isHidden = false
-            unreadCountLabel.text = "\(chat.unread_count)"
+            unreadCountLabel.text = chat.unread_count > 99 ? "99+" : "\(chat.unread_count)"
         } else {
             unreadBadge.isHidden = true
         }
+        
+        // Добавим разные иконки в зависимости от типа питомца - это можно улучшить при наличии API
+        if chat.petName.lowercased().contains("кот") || chat.petName.lowercased().contains("кош") {
+            avatarImageView.image = UIImage(systemName: "cat.fill")
+        } else if chat.petName.lowercased().contains("соба") {
+            avatarImageView.image = UIImage(systemName: "dog.fill")
+        } else {
+            avatarImageView.image = UIImage(systemName: "pawprint.circle.fill")
+        }
+    }
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        userNameLabel.text = nil
+        petNameLabel.text = nil
+        lastMessageLabel.text = nil
+        timeLabel.text = nil
+        unreadBadge.isHidden = true
+        unreadCountLabel.text = nil
     }
 }

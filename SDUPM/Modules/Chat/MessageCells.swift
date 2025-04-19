@@ -47,10 +47,16 @@ class BaseMessageCell: UITableViewCell {
         messageLabel.text = message.content
         timeLabel.text = message.formattedTime
         
-        if message.is_read {
+        updateReadStatus(isRead: message.is_read)
+    }
+    
+    func updateReadStatus(isRead: Bool) {
+        if isRead {
             readStatusImageView.image = UIImage(systemName: "checkmark.circle.fill")
+            readStatusImageView.tintColor = .systemBlue
         } else {
             readStatusImageView.image = UIImage(systemName: "checkmark.circle")
+            readStatusImageView.tintColor = .systemGray
         }
     }
 }

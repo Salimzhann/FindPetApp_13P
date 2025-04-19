@@ -6,6 +6,7 @@
 //
 
 import Foundation
+
 struct Chat: Codable {
     let id: Int
     let pet_id: Int
@@ -16,7 +17,7 @@ struct Chat: Codable {
     var last_message: ChatMessage?
     var unread_count: Int
     
-    // Для отображения в списке чатов - не декодируются из JSON
+    // Свойства для отображения в UI - не декодируются из JSON
     var otherUserName: String = "User"
     var petName: String = "Pet"
     
@@ -38,7 +39,7 @@ struct ChatMessage: Codable {
     let content: String
     let chat_id: Int
     let sender_id: Int
-    let is_read: Bool
+    var is_read: Bool
     let created_at: String
     
     // Вычисляемое свойство для форматирования времени
@@ -51,6 +52,13 @@ struct ChatMessage: Codable {
             return dateFormatter.string(from: date)
         }
         return ""
+    }
+    
+    // Вычисляемое свойство для определения даты
+    var createdAtDate: Date? {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+        return dateFormatter.date(from: created_at)
     }
 }
 
@@ -66,4 +74,31 @@ struct CreateChatRequest: Codable {
 
 struct SendMessageRequest: Codable {
     let content: String
+}
+
+// Типы сообщений для WebSocket
+enum MessageType: String, Codable {
+    case TEXT = "text"
+    case TYPING_STARTED = "typing_started"
+    case TYPING_ENDED = "typing_ended"
+    case MESSAGE_READ = "message_read"
+    case USER_ONLINE = "user_online"
+    case USER_OFFLINE = "user_offline"
+    case SYSTEM = "system"
+}
+
+// Структура для WebSocket сообщений
+struct WebSocketMessage: Codable {
+    let message_type: MessageType
+    let content: String?
+    let message_id: Int?
+    let user_id: Int?
+}
+
+// Структура для ответа о статусе WebSocket
+struct WebSocketStatusResponse: Codable {
+    let user_id: Int
+    let status_type: MessageType
+    let last_active_at: String?
+    let message_id: Int?
 }

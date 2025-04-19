@@ -2,8 +2,6 @@
 
 import Foundation
 
-
-
 class CreateChatPresenter {
     
     weak var view: CreateChatViewProtocol?
@@ -16,7 +14,12 @@ class CreateChatPresenter {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let chat):
-                    self.view?.chatCreated(chat)
+                    // Для лучшего отображения в UI, добавим названия
+                    var enhancedChat = chat
+                    enhancedChat.otherUserName = "Пользователь \(userId)"
+                    enhancedChat.petName = "Питомец \(petId)"
+                    
+                    self.view?.chatCreated(enhancedChat)
                 case .failure(let error):
                     self.view?.showError(message: error.localizedDescription)
                 }

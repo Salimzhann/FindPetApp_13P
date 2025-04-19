@@ -6,7 +6,8 @@ protocol ChatViewProtocol: AnyObject {
     func setMessages(_ messages: [ChatMessage])
     func addMessage(_ message: ChatMessage)
     func showTypingIndicator(_ isTyping: Bool)
-    func showUserInfo(_ userInfo: UserProfile)
+    func updateUserStatus(_ userId: Int, isOnline: Bool, lastActiveAt: Date?)
+    func markMessageAsRead(_ messageId: Int)
     func updateChatInfo(_ chat: Chat)
     func showLoading()
     func hideLoading()
@@ -21,9 +22,16 @@ class ChatPresenter {
     private var webSocketTask: URLSessionWebSocketTask?
     private var isConnected = false
     private var isConnecting = false
+    private var reconnectTimer: Timer?
+    private let reconnectInterval: TimeInterval = 5.0
     
     init(chatId: Int) {
         self.chatId = chatId
+    }
+    
+    deinit {
+        disconnectFromWebSocket()
+        reconnectTimer?.invalidate()
     }
     
     func fetchChatDetails() {
@@ -65,18 +73,17 @@ class ChatPresenter {
     }
     
     func sendMessage(content: String) {
-        provider.sendMessage(chatId: chatId, content: content) { [weak self] result in
-            guard let self = self else { return }
-            
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let message):
-                    self.view?.addMessage(message)
-                case .failure(let error):
-                    self.view?.showError(message: error.localizedDescription)
-                }
-            }
+        let messageData: [String: Any] = [
+            "message_type": "text",
+            "content": content
+        ]
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: messageData),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return
         }
+        
+        sendWebSocketMessage(jsonString)
     }
     
     // MARK: - WebSocket
@@ -88,9 +95,13 @@ class ChatPresenter {
         isConnecting = true
         let apiUrl = NetworkService.api
         
-        // Обратите внимание, что в зависимости от серверной инфраструктуры
-        // WebSocket URL может отличаться от REST API URL
-        let websocketEndpoint = "/api/v1/ws/chat/\(chatId)"
+        guard let token = UserDefaults.standard.string(forKey: LoginViewModel.tokenIdentifier) else {
+            DispatchQueue.main.async {
+                self.isConnecting = false
+                self.view?.showError(message: "Authentication required. Please log in again.")
+            }
+            return
+        }
         
         let wsBaseUrl: String
         if apiUrl.hasPrefix("https://") {
@@ -98,14 +109,12 @@ class ChatPresenter {
         } else if apiUrl.hasPrefix("http://") {
             wsBaseUrl = "ws://" + apiUrl.dropFirst("http://".count)
         } else {
-            DispatchQueue.main.async {
-                self.isConnecting = false
-                self.view?.showError(message: "Invalid API URL format")
-            }
-            return
+            wsBaseUrl = apiUrl
         }
         
-        guard var urlComponents = URLComponents(string: "\(wsBaseUrl)\(websocketEndpoint)") else {
+        let websocketEndpoint = "/api/v1/ws/\(chatId)?token=\(token)"
+        
+        guard let url = URL(string: "\(wsBaseUrl)\(websocketEndpoint)") else {
             DispatchQueue.main.async {
                 self.isConnecting = false
                 self.view?.showError(message: "Invalid WebSocket URL")
@@ -113,32 +122,13 @@ class ChatPresenter {
             return
         }
         
-        if let token = UserDefaults.standard.string(forKey: LoginViewModel.tokenIdentifier) {
-            urlComponents.queryItems = [URLQueryItem(name: "token", value: token)]
-        }
-        
-        guard let url = urlComponents.url else {
-            DispatchQueue.main.async {
-                self.isConnecting = false
-                self.view?.showError(message: "Failed to create WebSocket URL")
-            }
-            return
-        }
-        
         print("Connecting to WebSocket URL: \(url.absoluteString)")
         
-        // Создаем сессию с расширенными настройками для отладки
-        let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30 // Увеличиваем таймаут для отладки
-        let session = URLSession(configuration: config)
-        
+        // Создаем сессию с расширенными настройками
+        let session = URLSession(configuration: .default)
         webSocketTask = session.webSocketTask(with: url)
         
-        // Добавляем обработчик завершения соединения
         webSocketTask?.resume()
-        
-        // Устанавливаем обработчик ошибок
-        webSocketTask?.maximumMessageSize = 1024 * 1024 // 1 MB
         
         isConnected = true
         isConnecting = false
@@ -147,10 +137,21 @@ class ChatPresenter {
     }
     
     func disconnectFromWebSocket() {
-        guard isConnected else { return }
+        guard isConnected, let task = webSocketTask else { return }
         
-        webSocketTask?.cancel(with: .normalClosure, reason: nil)
+        task.cancel(with: .normalClosure, reason: nil)
+        webSocketTask = nil
         isConnected = false
+        
+        reconnectTimer?.invalidate()
+        reconnectTimer = nil
+    }
+    
+    private func scheduleReconnect() {
+        reconnectTimer?.invalidate()
+        reconnectTimer = Timer.scheduledTimer(withTimeInterval: reconnectInterval, repeats: false) { [weak self] _ in
+            self?.connectToWebSocket()
+        }
     }
     
     private func receiveMessage() {
@@ -180,13 +181,14 @@ class ChatPresenter {
             case .failure(let error):
                 print("WebSocket error: \(error.localizedDescription)")
                 DispatchQueue.main.async {
-                    // Избегаем многократных уведомлений о той же ошибке
+                    // Avoid multiple notifications about the same error
                     if self.isConnected {
                         self.isConnected = false
-                        // Уведомляем пользователя только в случае критической ошибки,
-                        // незначительные ошибки лучше обрабатывать молча
+                        
+                        // Only notify the user in case of a critical error
                         if (error as NSError).code != URLError.cancelled.rawValue {
-                            self.view?.showError(message: "Соединение с чатом прервано")
+                            self.view?.showError(message: "Connection to chat interrupted. Reconnecting...")
+                            self.scheduleReconnect()
                         }
                     }
                 }
@@ -195,78 +197,146 @@ class ChatPresenter {
     }
     
     private func handleWebSocketMessage(_ text: String) {
-        // Более гибкая обработка различных форматов сообщений
+        guard let data = text.data(using: .utf8) else { return }
+        
         do {
-            // Сначала пробуем декодировать как простое сообщение чата
-            if let data = text.data(using: .utf8) {
-                do {
-                    let message = try JSONDecoder().decode(ChatMessage.self, from: data)
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                
+                // Check if this is a chat message
+                if let content = json["content"] as? String,
+                   let messageId = (json["message_id"] as? Int) ?? (json["id"] as? Int),
+                   let chatId = json["chat_id"] as? Int,
+                   let senderId = json["sender_id"] as? Int,
+                   let isRead = json["is_read"] as? Bool,
+                   let createdAt = json["created_at"] as? String {
+                    
+                    let id = messageId is Int ? messageId : (json["id"] as? Int ?? 0)
+                    
+                    let message = ChatMessage(
+                        id: id,
+                        content: content,
+                        chat_id: chatId,
+                        sender_id: senderId,
+                        is_read: isRead,
+                        created_at: createdAt
+                    )
+                    
                     DispatchQueue.main.async {
                         self.view?.addMessage(message)
                     }
                     return
-                } catch {
-                    print("Failed to decode as ChatMessage: \(error)")
-                    // Если не удалось декодировать как ChatMessage, продолжаем
                 }
                 
-                // Пробуем декодировать как обертку сообщения
-                do {
-                    let messageWrapper = try JSONDecoder().decode(MessageWrapper.self, from: data)
-                    if let message = messageWrapper.message {
-                        // Если сообщение содержит текст, обрабатываем его как ChatMessage
-                        let messageData = message.data(using: .utf8)
-                        let chatMessage = try JSONDecoder().decode(ChatMessage.self, from: messageData!)
-                        DispatchQueue.main.async {
-                            self.view?.addMessage(chatMessage)
-                        }
-                    } else if messageWrapper.typing == true {
-                        // Сообщение о наборе текста
+                // Handle typing status
+                if let statusType = json["status_type"] as? String,
+                   let userId = json["user_id"] as? Int {
+                    
+                    switch statusType {
+                    case "typing_started":
                         DispatchQueue.main.async {
                             self.view?.showTypingIndicator(true)
                         }
-                        
-                        // Скрываем индикатор набора через 3 секунды
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    case "typing_ended":
+                        DispatchQueue.main.async {
                             self.view?.showTypingIndicator(false)
                         }
+                    case "message_read":
+                        if let messageId = json["message_id"] as? Int {
+                            DispatchQueue.main.async {
+                                self.view?.markMessageAsRead(messageId)
+                            }
+                        }
+                    case "user_online":
+                        let lastActiveStr = json["last_active_at"] as? String
+                        let lastActive: Date?
+                        if let lastActiveStr = lastActiveStr {
+                            let dateFormatter = DateFormatter()
+                            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+                            lastActive = dateFormatter.date(from: lastActiveStr)
+                        } else {
+                            lastActive = nil
+                        }
+                        DispatchQueue.main.async {
+                            self.view?.updateUserStatus(userId, isOnline: true, lastActiveAt: lastActive)
+                        }
+                    case "user_offline":
+                        let lastActiveStr = json["last_active_at"] as? String
+                        let lastActive: Date?
+                        if let lastActiveStr = lastActiveStr {
+                            let dateFormatter = DateFormatter()
+                            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+                            lastActive = dateFormatter.date(from: lastActiveStr)
+                        } else {
+                            lastActive = nil
+                        }
+                        DispatchQueue.main.async {
+                            self.view?.updateUserStatus(userId, isOnline: false, lastActiveAt: lastActive)
+                        }
+                    default:
+                        break
                     }
                     return
-                } catch {
-                    print("Failed to decode as MessageWrapper: \(error)")
                 }
                 
-                // Если все вышеперечисленные методы не сработали, просто логируем сообщение
-                print("Received unhandled WebSocket message: \(text)")
+                // System message
+                if let message = json["message"] as? String,
+                   let type = json["type"] as? String,
+                   type == "system" {
+                    print("System message: \(message)")
+                    return
+                }
             }
         } catch {
             print("Failed to parse WebSocket message: \(error)")
         }
     }
     
-    func sendTypingEvent() {
-        guard isConnected, let task = webSocketTask else { return }
+    private func sendWebSocketMessage(_ text: String) {
+        guard isConnected, let task = webSocketTask else {
+            // Try to reconnect if disconnected
+            if !isConnecting {
+                connectToWebSocket()
+            }
+            return
+        }
         
-        let messageDict = ["typing": true]
-        
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: messageDict)
-            if let jsonString = String(data: jsonData, encoding: .utf8) {
-                let message = URLSessionWebSocketTask.Message.string(jsonString)
-                task.send(message) { error in
-                    if let error = error {
-                        print("Failed to send typing event: \(error)")
+        let message = URLSessionWebSocketTask.Message.string(text)
+        task.send(message) { [weak self] error in
+            if let error = error {
+                print("Failed to send WebSocket message: \(error)")
+                DispatchQueue.main.async {
+                    if let self = self, self.isConnected {
+                        self.isConnected = false
+                        self.scheduleReconnect()
                     }
                 }
             }
-        } catch {
-            print("Failed to encode typing event: \(error)")
         }
     }
-}
-
-// Структура для декодирования разных форматов сообщений
-struct MessageWrapper: Codable {
-    let message: String?
-    let typing: Bool?
+    
+    func sendTypingEvent(isTyping: Bool) {
+        let messageType = isTyping ? "typing_started" : "typing_ended"
+        let messageDict = ["message_type": messageType]
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: messageDict),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return
+        }
+        
+        sendWebSocketMessage(jsonString)
+    }
+    
+    func markMessageAsRead(messageId: Int) {
+        let messageDict: [String: Any] = [
+            "message_type": "message_read",
+            "message_id": messageId
+        ]
+        
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: messageDict),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return
+        }
+        
+        sendWebSocketMessage(jsonString)
+    }
 }

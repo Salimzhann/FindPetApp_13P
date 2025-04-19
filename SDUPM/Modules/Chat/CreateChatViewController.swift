@@ -19,7 +19,7 @@ class CreateChatViewController: UIViewController, CreateChatViewProtocol {
     
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.text = "Create a new chat"
+        label.text = "Создать новый чат"
         label.font = .systemFont(ofSize: 22, weight: .bold)
         label.textAlignment = .center
         return label
@@ -27,7 +27,7 @@ class CreateChatViewController: UIViewController, CreateChatViewProtocol {
     
     private let petIdTextField: UITextField = {
         let textField = UITextField()
-        textField.placeholder = "Pet ID"
+        textField.placeholder = "ID питомца"
         textField.borderStyle = .roundedRect
         textField.keyboardType = .numberPad
         return textField
@@ -35,15 +35,25 @@ class CreateChatViewController: UIViewController, CreateChatViewProtocol {
     
     private let userIdTextField: UITextField = {
         let textField = UITextField()
-        textField.placeholder = "User ID"
+        textField.placeholder = "ID пользователя"
         textField.borderStyle = .roundedRect
         textField.keyboardType = .numberPad
         return textField
     }()
     
+    private let infoLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Введите ID питомца и ID пользователя, с которым хотите начать чат."
+        label.textColor = .secondaryLabel
+        label.font = .systemFont(ofSize: 14)
+        label.numberOfLines = 0
+        label.textAlignment = .center
+        return label
+    }()
+    
     private let createButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("Create Chat", for: .normal)
+        button.setTitle("Создать чат", for: .normal)
         button.setTitleColor(.white, for: .normal)
         button.backgroundColor = .systemGreen
         button.layer.cornerRadius = 12
@@ -64,14 +74,14 @@ class CreateChatViewController: UIViewController, CreateChatViewProtocol {
         super.viewDidLoad()
         setupUI()
         setupActions()
-        setupPresenter()
         hideKeyboardWhenTappedAround()
+        setupPresenter()
     }
     
     // MARK: - Setup
     
     private func setupUI() {
-        title = "New Chat"
+        title = "Новый чат"
         view.backgroundColor = .systemBackground
         
         navigationItem.leftBarButtonItem = UIBarButtonItem(
@@ -81,6 +91,7 @@ class CreateChatViewController: UIViewController, CreateChatViewProtocol {
         )
         
         view.addSubview(titleLabel)
+        view.addSubview(infoLabel)
         view.addSubview(petIdTextField)
         view.addSubview(userIdTextField)
         view.addSubview(createButton)
@@ -92,8 +103,13 @@ class CreateChatViewController: UIViewController, CreateChatViewProtocol {
             make.leading.trailing.equalToSuperview().inset(20)
         }
         
+        infoLabel.snp.makeConstraints { make in
+            make.top.equalTo(titleLabel.snp.bottom).offset(12)
+            make.leading.trailing.equalToSuperview().inset(20)
+        }
+        
         petIdTextField.snp.makeConstraints { make in
-            make.top.equalTo(titleLabel.snp.bottom).offset(30)
+            make.top.equalTo(infoLabel.snp.bottom).offset(30)
             make.leading.trailing.equalToSuperview().inset(20)
             make.height.equalTo(48)
         }
@@ -149,7 +165,7 @@ class CreateChatViewController: UIViewController, CreateChatViewProtocol {
               let userIdText = userIdTextField.text, !userIdText.isEmpty,
               let petId = Int(petIdText),
               let userId = Int(userIdText) else {
-            showAlert(title: "Error", message: "Please enter valid Pet ID and User ID")
+            showAlert(title: "Ошибка", message: "Пожалуйста, введите корректные ID питомца и пользователя")
             return
         }
         
@@ -171,7 +187,7 @@ class CreateChatViewController: UIViewController, CreateChatViewProtocol {
     
     private func hideLoading() {
         activityIndicator.stopAnimating()
-        createButton.setTitle("Create Chat", for: .normal)
+        createButton.setTitle("Создать чат", for: .normal)
         createButton.isEnabled = true
     }
     
@@ -184,6 +200,6 @@ class CreateChatViewController: UIViewController, CreateChatViewProtocol {
     
     func showError(message: String) {
         hideLoading()
-        showAlert(title: "Error", message: message)
+        showAlert(title: "Ошибка", message: message)
     }
 }

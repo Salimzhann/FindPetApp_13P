@@ -7,9 +7,11 @@ class ChatViewController: UIViewController {
     
     private let chat: Chat
     private var messages: [ChatMessage] = []
-    private var currentUserId: Int = 1 // Значение будет получено из UserDefaults
+    private var currentUserId: Int = 1 // Будет получено из UserDefaults
     private let presenter: ChatPresenter
     private var isShowingAlert = false
+    private var isOtherUserOnline = false
+    private var otherUserLastActive: Date?
     
     // MARK: - UI Components
     
@@ -25,6 +27,10 @@ class ChatViewController: UIViewController {
     private let inputContainerView: UIView = {
         let view = UIView()
         view.backgroundColor = .systemBackground
+        view.layer.shadowColor = UIColor.black.cgColor
+        view.layer.shadowOpacity = 0.1
+        view.layer.shadowOffset = CGSize(width: 0, height: -2)
+        view.layer.shadowRadius = 3
         return view
     }()
     
@@ -71,6 +77,22 @@ class ChatViewController: UIViewController {
         return indicator
     }()
     
+    private let userStatusView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .systemGray6
+        view.layer.cornerRadius = 6
+        view.isHidden = true
+        return view
+    }()
+    
+    private let userStatusLabel: UILabel = {
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 12)
+        label.textColor = .secondaryLabel
+        label.textAlignment = .center
+        return label
+    }()
+    
     // MARK: - Initialization
     
     init(chat: Chat) {
@@ -92,9 +114,12 @@ class ChatViewController: UIViewController {
         setupActions()
         setupKeyboardObservers()
         
-        // Получаем текущий ID пользователя из UserDefaults
+        // Получаем текущий ID пользователя
         if let userId = UserDefaults.standard.object(forKey: "current_user_id") as? Int {
             currentUserId = userId
+        } else {
+            // По умолчанию будем считать currentUserId = user1_id
+            currentUserId = chat.user1_id
         }
         
         title = chat.otherUserName
@@ -109,7 +134,7 @@ class ChatViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        // Подключаем WebSocket только после того, как view полностью загружен
+        // Connect to WebSocket only after the view is fully loaded
         presenter.connectToWebSocket()
     }
     
@@ -132,6 +157,9 @@ class ChatViewController: UIViewController {
         
         view.addSubview(typingIndicatorView)
         typingIndicatorView.addSubview(typingLabel)
+        
+        view.addSubview(userStatusView)
+        userStatusView.addSubview(userStatusLabel)
         
         tableView.snp.makeConstraints { make in
             make.top.leading.trailing.equalToSuperview()
@@ -168,6 +196,16 @@ class ChatViewController: UIViewController {
             make.edges.equalToSuperview().inset(UIEdgeInsets(top: 4, left: 12, bottom: 4, right: 12))
         }
         
+        userStatusView.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(4)
+            make.height.equalTo(22)
+        }
+        
+        userStatusLabel.snp.makeConstraints { make in
+            make.edges.equalToSuperview().inset(UIEdgeInsets(top: 4, left: 12, bottom: 4, right: 12))
+        }
+        
         activityIndicator.snp.makeConstraints { make in
             make.center.equalToSuperview()
         }
@@ -185,6 +223,7 @@ class ChatViewController: UIViewController {
         sendButton.addTarget(self, action: #selector(sendButtonTapped), for: .touchUpInside)
         
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        tapGesture.cancelsTouchesInView = false
         tableView.addGestureRecognizer(tapGesture)
         
         // Настраиваем делегата для text view, чтобы отслеживать высоту
@@ -218,7 +257,7 @@ class ChatViewController: UIViewController {
         
         presenter.sendMessage(content: messageText)
         
-        // Очищаем поле ввода
+        // Clear the input field
         messageTextView.text = ""
         updateTextViewHeight()
     }
@@ -267,23 +306,48 @@ class ChatViewController: UIViewController {
         }
     }
     
+    private func updateUserStatusUI() {
+        DispatchQueue.main.async {
+            if self.isOtherUserOnline {
+                self.userStatusLabel.text = "Online"
+                self.userStatusView.backgroundColor = .systemGreen.withAlphaComponent(0.2)
+                self.userStatusLabel.textColor = .systemGreen
+            } else if let lastActive = self.otherUserLastActive {
+                // Format the last active time
+                let formatter = RelativeDateTimeFormatter()
+                formatter.unitsStyle = .short
+                let relativeTime = formatter.localizedString(for: lastActive, relativeTo: Date())
+                self.userStatusLabel.text = "Active \(relativeTime)"
+                self.userStatusView.backgroundColor = .systemGray6
+                self.userStatusLabel.textColor = .secondaryLabel
+            } else {
+                self.userStatusView.isHidden = true
+                return
+            }
+            
+            self.userStatusView.isHidden = false
+            self.userStatusView.snp.updateConstraints { make in
+                make.width.equalTo(self.userStatusLabel.intrinsicContentSize.width + 24)
+            }
+            
+        }
+    }
     
-    
-    // Вспомогательная функция для безопасного отображения алертов
+    // Helper method for safely showing alerts
     private func showAlertIfPossible(title: String, message: String) {
         guard !isShowingAlert,
               let rootVC = UIApplication.shared.windows.first?.rootViewController else {
             return
         }
         
-        // Находим верхний VC, на котором можно показать алерт
+        // Find the top view controller where we can show an alert
         var topVC = rootVC
         while let presentedVC = topVC.presentedViewController,
               !(presentedVC is UIAlertController) {
             topVC = presentedVC
         }
         
-        // Если уже отображается алерт, ничего не делаем
+        // If an alert is already being shown, do nothing
         if topVC.presentedViewController is UIAlertController {
             return
         }
@@ -303,28 +367,41 @@ class ChatViewController: UIViewController {
 extension ChatViewController: ChatViewProtocol {
     func updateChatInfo(_ chat: Chat) {
         title = chat.otherUserName
-        // Здесь можно обновить другие элементы интерфейса, если необходимо
     }
     
     func setMessages(_ messages: [ChatMessage]) {
-        self.messages = messages.reversed() // Инвертируем порядок сообщений
+        self.messages = messages.reversed() // Reverse messages for inverted table view
+        
         DispatchQueue.main.async {
             self.tableView.reloadData()
             if !self.messages.isEmpty {
                 self.tableView.scrollToRow(at: IndexPath(row: 0, section: 0), at: .bottom, animated: false)
             }
+            
+            // Mark all unread messages as read
+            for message in self.messages where !message.is_read && message.sender_id != self.currentUserId {
+                self.presenter.markMessageAsRead(messageId: message.id)
+            }
         }
     }
     
     func addMessage(_ message: ChatMessage) {
-        // Проверяем, нет ли уже такого сообщения (по id)
+        // Check if the message already exists
         if !messages.contains(where: { $0.id == message.id }) {
-            messages.insert(message, at: 0) // Вставляем в начало списка (из-за инвертированной таблицы)
+            // Insert at the top of the array for inverted table view
+            messages.insert(message, at: 0)
+            
             DispatchQueue.main.async {
+                // Update UI
                 self.tableView.beginUpdates()
-                self.tableView.insertRows(at: [IndexPath(row: 0, section: 0)], with: .bottom)
+                self.tableView.insertRows(at: [IndexPath(row: 0, section: 0)], with: .automatic)
                 self.tableView.endUpdates()
                 self.tableView.scrollToRow(at: IndexPath(row: 0, section: 0), at: .bottom, animated: true)
+                
+                // Mark message as read if it's not from the current user
+                if !message.is_read && message.sender_id != self.currentUserId {
+                    self.presenter.markMessageAsRead(messageId: message.id)
+                }
             }
         }
     }
@@ -337,27 +414,48 @@ extension ChatViewController: ChatViewProtocol {
         }
     }
     
-    func showUserInfo(_ userInfo: UserProfile) {
-        // Реализация не требуется для текущей задачи
+    func updateUserStatus(_ userId: Int, isOnline: Bool, lastActiveAt: Date?) {
+        // Only update if it's the other user
+        let otherUserId = currentUserId == chat.user1_id ? chat.user2_id : chat.user1_id
+        if userId == otherUserId {
+            isOtherUserOnline = isOnline
+            otherUserLastActive = lastActiveAt
+            updateUserStatusUI()
+        }
+    }
+    
+    func markMessageAsRead(_ messageId: Int) {
+        // Find and update the message in the array
+        if let index = messages.firstIndex(where: { $0.id == messageId }) {
+            messages[index].is_read = true
+            
+            DispatchQueue.main.async {
+                // Only refresh the specific row that changed
+                if let visibleRows = self.tableView.indexPathsForVisibleRows,
+                   visibleRows.contains(IndexPath(row: index, section: 0)) {
+                    self.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
+                }
+            }
+        }
     }
     
     func showLoading() {
         DispatchQueue.main.async {
             self.activityIndicator.startAnimating()
+            self.tableView.isHidden = true
         }
     }
     
     func hideLoading() {
         DispatchQueue.main.async {
             self.activityIndicator.stopAnimating()
+            self.tableView.isHidden = false
         }
     }
     
     func showError(message: String) {
         DispatchQueue.main.async {
-            // Используем безопасный метод отображения алерта
             self.showAlertIfPossible(title: "Ошибка", message: message)
-            print("Error: \(message)")
         }
     }
 }
@@ -373,15 +471,15 @@ extension ChatViewController: UITableViewDataSource, UITableViewDelegate {
         let message = messages[indexPath.row]
         
         if message.sender_id == currentUserId {
-            // Исходящие сообщения
+            // Outgoing messages
             let cell = tableView.dequeueReusableCell(withIdentifier: "OutgoingMessageCell", for: indexPath) as! OutgoingMessageCell
-            cell.transform = CGAffineTransform(scaleX: 1, y: -1) // Инвертируем ячейку обратно
+            cell.transform = CGAffineTransform(scaleX: 1, y: -1) // Invert cell back
             cell.configure(with: message)
             return cell
         } else {
-            // Входящие сообщения
+            // Incoming messages
             let cell = tableView.dequeueReusableCell(withIdentifier: "IncomingMessageCell", for: indexPath) as! IncomingMessageCell
-            cell.transform = CGAffineTransform(scaleX: 1, y: -1) // Инвертируем ячейку обратно
+            cell.transform = CGAffineTransform(scaleX: 1, y: -1) // Invert cell back
             cell.configure(with: message)
             return cell
         }
@@ -401,7 +499,16 @@ extension ChatViewController: UITableViewDataSource, UITableViewDelegate {
 extension ChatViewController: UITextViewDelegate {
     func textViewDidChange(_ textView: UITextView) {
         updateTextViewHeight()
-        // Отправка уведомления о наборе текста
-        presenter.sendTypingEvent()
+        
+        // Send typing notification
+        presenter.sendTypingEvent(isTyping: !textView.text.isEmpty)
+    }
+    
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        presenter.sendTypingEvent(isTyping: !textView.text.isEmpty)
+    }
+    
+    func textViewDidEndEditing(_ textView: UITextView) {
+        presenter.sendTypingEvent(isTyping: false)
     }
 }
