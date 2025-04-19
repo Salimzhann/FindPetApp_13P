@@ -271,11 +271,11 @@ class ProfileView: UIViewController, ProfileViewProtocol {
     }
     
     func showError(message: String) {
-        DispatchQueue.main.async { [weak self] in
-            let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
-            self?.present(alert, animated: true)
-        }
+//        DispatchQueue.main.async { [weak self] in
+////            let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+////            alert.addAction(UIAlertAction(title: "OK", style: .default))
+////            self?.present(alert, animated: true)
+//        }
     }
     
     func showSuccess(message: String) {

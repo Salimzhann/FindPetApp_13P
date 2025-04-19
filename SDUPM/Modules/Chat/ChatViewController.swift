@@ -1,20 +1,18 @@
-// Путь: SDUPM/Modules/Chat/ChatViewController.swift
-
 import UIKit
 import SnapKit
+
 
 class ChatViewController: UIViewController {
     
     private let chat: Chat
     private var messages: [ChatMessage] = []
-    private var currentUserId: Int = 1 // Будет получено из UserDefaults
+    private var currentUserId: Int = 1
     private let presenter: ChatPresenter
     private var isShowingAlert = false
     private var isOtherUserOnline = false
     private var otherUserLastActive: Date?
     
     // MARK: - UI Components
-    
     private let tableView: UITableView = {
         let tableView = UITableView()
         tableView.register(OutgoingMessageCell.self, forCellReuseIdentifier: "OutgoingMessageCell")
@@ -23,7 +21,6 @@ class ChatViewController: UIViewController {
         tableView.backgroundColor = .systemBackground
         return tableView
     }()
-    
     private let inputContainerView: UIView = {
         let view = UIView()
         view.backgroundColor = .systemBackground
@@ -33,7 +30,6 @@ class ChatViewController: UIViewController {
         view.layer.shadowRadius = 3
         return view
     }()
-    
     private let messageTextView: UITextView = {
         let textView = UITextView()
         textView.font = .systemFont(ofSize: 16)
@@ -42,18 +38,18 @@ class ChatViewController: UIViewController {
         textView.layer.borderColor = UIColor.systemGray4.cgColor
         textView.isScrollEnabled = false
         textView.textContainerInset = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
+        textView.placeholder = "Сообщение..."
         return textView
     }()
-    
     private let sendButton: UIButton = {
         let button = UIButton(type: .system)
         button.setImage(UIImage(systemName: "arrow.up.circle.fill"), for: .normal)
         button.tintColor = .systemGreen
         button.contentVerticalAlignment = .fill
         button.contentHorizontalAlignment = .fill
+        button.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
         return button
     }()
-    
     private let typingIndicatorView: UIView = {
         let view = UIView()
         view.backgroundColor = .systemGray6
@@ -61,22 +57,19 @@ class ChatViewController: UIViewController {
         view.isHidden = true
         return view
     }()
-    
     private let typingLabel: UILabel = {
         let label = UILabel()
-        label.text = "typing..."
+        label.text = "печатает..."
         label.font = .systemFont(ofSize: 12)
         label.textColor = .secondaryLabel
         return label
     }()
-    
     private let activityIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .large)
         indicator.hidesWhenStopped = true
         indicator.color = .systemGreen
         return indicator
     }()
-    
     private let userStatusView: UIView = {
         let view = UIView()
         view.backgroundColor = .systemGray6
@@ -84,7 +77,6 @@ class ChatViewController: UIViewController {
         view.isHidden = true
         return view
     }()
-    
     private let userStatusLabel: UILabel = {
         let label = UILabel()
         label.font = .systemFont(ofSize: 12)
@@ -94,7 +86,6 @@ class ChatViewController: UIViewController {
     }()
     
     // MARK: - Initialization
-    
     init(chat: Chat) {
         self.chat = chat
         self.presenter = ChatPresenter(chatId: chat.id)
@@ -106,7 +97,6 @@ class ChatViewController: UIViewController {
     }
     
     // MARK: - Lifecycle
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
@@ -114,16 +104,16 @@ class ChatViewController: UIViewController {
         setupActions()
         setupKeyboardObservers()
         
-        // Получаем текущий ID пользователя
         if let userId = UserDefaults.standard.object(forKey: "current_user_id") as? Int {
             currentUserId = userId
         } else {
-            // По умолчанию будем считать currentUserId = user1_id
             currentUserId = chat.user1_id
         }
         
         title = chat.otherUserName
         presenter.view = self
+        
+        setupNavigation()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -134,7 +124,7 @@ class ChatViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        // Connect to WebSocket only after the view is fully loaded
+        
         presenter.connectToWebSocket()
     }
     
@@ -211,12 +201,46 @@ class ChatViewController: UIViewController {
         }
     }
     
+    private func setupNavigation() {
+        navigationController?.navigationBar.tintColor = .systemGreen
+        
+        let titleView = UIView(frame: CGRect(x: 0, y: 0, width: 200, height: 40))
+        
+        let avatarView = UIImageView(frame: CGRect(x: 0, y: 0, width: 30, height: 30))
+        avatarView.image = UIImage(systemName: "person.circle.fill")
+        avatarView.tintColor = .systemGreen
+        avatarView.contentMode = .scaleAspectFit
+        avatarView.layer.cornerRadius = 15
+        avatarView.clipsToBounds = true
+        
+        let nameLabel = UILabel(frame: CGRect(x: 40, y: 0, width: 160, height: 20))
+        nameLabel.text = chat.otherUserName
+        nameLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        
+        let statusLabel = UILabel(frame: CGRect(x: 40, y: 22, width: 160, height: 18))
+        statusLabel.text = "В сети"
+        statusLabel.font = UIFont.systemFont(ofSize: 12)
+        statusLabel.textColor = .systemGray
+        
+        titleView.addSubview(avatarView)
+        titleView.addSubview(nameLabel)
+        titleView.addSubview(statusLabel)
+        
+        navigationItem.titleView = titleView
+    }
+    
     private func setupTableView() {
         tableView.dataSource = self
         tableView.delegate = self
+        tableView.transform = CGAffineTransform.identity
         
-        // Инвертируем таблицу, чтобы последнее сообщение было внизу
-        tableView.transform = CGAffineTransform(scaleX: 1, y: -1)
+        let backgroundImage = UIImageView()
+        backgroundImage.contentMode = .scaleAspectFill
+        backgroundImage.alpha = 0.1
+        backgroundImage.image = UIImage(systemName: "bubble.left.and.bubble.right")
+        backgroundImage.tintColor = .systemGray3
+        
+        tableView.backgroundView = backgroundImage
     }
     
     private func setupActions() {
@@ -226,7 +250,6 @@ class ChatViewController: UIViewController {
         tapGesture.cancelsTouchesInView = false
         tableView.addGestureRecognizer(tapGesture)
         
-        // Настраиваем делегата для text view, чтобы отслеживать высоту
         messageTextView.delegate = self
     }
     
@@ -317,17 +340,32 @@ class ChatViewController: UIViewController {
     private func updateUserStatusUI() {
         DispatchQueue.main.async {
             if self.isOtherUserOnline {
-                self.userStatusLabel.text = "Online"
+                self.userStatusLabel.text = "В сети"
                 self.userStatusView.backgroundColor = .systemGreen.withAlphaComponent(0.2)
                 self.userStatusLabel.textColor = .systemGreen
+                
+                // Обновляем статус в навигационной панели
+                if let titleView = self.navigationItem.titleView,
+                   let statusLabel = titleView.subviews.last as? UILabel {
+                    statusLabel.text = "В сети"
+                    statusLabel.textColor = .systemGreen
+                }
             } else if let lastActive = self.otherUserLastActive {
                 // Format the last active time
                 let formatter = RelativeDateTimeFormatter()
                 formatter.unitsStyle = .short
                 let relativeTime = formatter.localizedString(for: lastActive, relativeTo: Date())
-                self.userStatusLabel.text = "Active \(relativeTime)"
+                let statusText = "Активен \(relativeTime)"
+                self.userStatusLabel.text = statusText
                 self.userStatusView.backgroundColor = .systemGray6
                 self.userStatusLabel.textColor = .secondaryLabel
+                
+                // Обновляем статус в навигационной панели
+                if let titleView = self.navigationItem.titleView,
+                   let statusLabel = titleView.subviews.last as? UILabel {
+                    statusLabel.text = statusText
+                    statusLabel.textColor = .systemGray
+                }
             } else {
                 self.userStatusView.isHidden = true
                 return
@@ -364,14 +402,26 @@ class ChatViewController: UIViewController {
         if topVC.presentedViewController is UIAlertController {
             return
         }
+//        
+//        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+//        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+//            self.isShowingAlert = false
+//        })
+//        
+//        isShowingAlert = true
+//        topVC.present(alert, animated: true)
+    }
+    
+    // Метод для прокрутки чата вниз к последнему сообщению
+    private func scrollToBottom(animated: Bool = true) {
+        guard !messages.isEmpty else { return }
         
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
-            self.isShowingAlert = false
-        })
+        let lastRow = tableView.numberOfRows(inSection: 0) - 1
+        let indexPath = IndexPath(row: lastRow, section: 0)
         
-        isShowingAlert = true
-        topVC.present(alert, animated: true)
+        DispatchQueue.main.async {
+            self.tableView.scrollToRow(at: indexPath, at: .bottom, animated: animated)
+        }
     }
 }
 
@@ -380,16 +430,20 @@ class ChatViewController: UIViewController {
 extension ChatViewController: ChatViewProtocol {
     func updateChatInfo(_ chat: Chat) {
         title = chat.otherUserName
+        
+        // Обновляем имя в навигационной панели
+        if let titleView = navigationItem.titleView,
+           let nameLabel = titleView.subviews[1] as? UILabel {
+            nameLabel.text = chat.otherUserName
+        }
     }
     
     func setMessages(_ messages: [ChatMessage]) {
-        self.messages = messages.reversed() // Reverse messages for inverted table view
+        self.messages = messages
         
         DispatchQueue.main.async {
             self.tableView.reloadData()
-            if !self.messages.isEmpty {
-                self.tableView.scrollToRow(at: IndexPath(row: 0, section: 0), at: .bottom, animated: false)
-            }
+            self.scrollToBottom(animated: false)
             
             // Mark all unread messages as read
             for message in self.messages where !message.is_read && message.sender_id != self.currentUserId {
@@ -401,15 +455,15 @@ extension ChatViewController: ChatViewProtocol {
     func addMessage(_ message: ChatMessage) {
         // Check if the message already exists
         if !messages.contains(where: { $0.id == message.id }) {
-            // Insert at the top of the array for inverted table view
-            messages.insert(message, at: 0)
+            // Add to the end of the array for standard table view
+            messages.append(message)
             
             DispatchQueue.main.async {
                 // Update UI
                 self.tableView.beginUpdates()
-                self.tableView.insertRows(at: [IndexPath(row: 0, section: 0)], with: .automatic)
+                self.tableView.insertRows(at: [IndexPath(row: self.messages.count - 1, section: 0)], with: .automatic)
                 self.tableView.endUpdates()
-                self.tableView.scrollToRow(at: IndexPath(row: 0, section: 0), at: .bottom, animated: true)
+                self.scrollToBottom()
                 
                 // Mark message as read if it's not from the current user
                 if !message.is_read && message.sender_id != self.currentUserId {
@@ -486,13 +540,11 @@ extension ChatViewController: UITableViewDataSource, UITableViewDelegate {
         if message.sender_id == currentUserId {
             // Outgoing messages
             let cell = tableView.dequeueReusableCell(withIdentifier: "OutgoingMessageCell", for: indexPath) as! OutgoingMessageCell
-            cell.transform = CGAffineTransform(scaleX: 1, y: -1) // Invert cell back
             cell.configure(with: message)
             return cell
         } else {
             // Incoming messages
             let cell = tableView.dequeueReusableCell(withIdentifier: "IncomingMessageCell", for: indexPath) as! IncomingMessageCell
-            cell.transform = CGAffineTransform(scaleX: 1, y: -1) // Invert cell back
             cell.configure(with: message)
             return cell
         }
@@ -518,10 +570,32 @@ extension ChatViewController: UITextViewDelegate {
     }
     
     func textViewDidBeginEditing(_ textView: UITextView) {
+        if textView.text == "Сообщение..." {
+            textView.text = ""
+            textView.textColor = .label
+        }
         presenter.sendTypingEvent(isTyping: !textView.text.isEmpty)
     }
     
     func textViewDidEndEditing(_ textView: UITextView) {
+        if textView.text.isEmpty {
+            textView.text = "Сообщение..."
+            textView.textColor = .placeholderText
+        }
         presenter.sendTypingEvent(isTyping: false)
+    }
+}
+
+// MARK: - UITextView+Placeholder
+
+extension UITextView {
+    var placeholder: String? {
+        get {
+            return nil
+        }
+        set {
+            self.text = newValue
+            self.textColor = .placeholderText
+        }
     }
 }

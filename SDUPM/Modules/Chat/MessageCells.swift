@@ -7,7 +7,7 @@ class BaseMessageCell: UITableViewCell {
     
     let bubbleView: UIView = {
         let view = UIView()
-        view.layer.cornerRadius = 16
+        view.layer.cornerRadius = 18
         view.clipsToBounds = true
         return view
     }()
@@ -61,6 +61,7 @@ class BaseMessageCell: UITableViewCell {
     }
 }
 
+// Исходящие сообщения - ваши сообщения (справа)
 class OutgoingMessageCell: BaseMessageCell {
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -73,19 +74,28 @@ class OutgoingMessageCell: BaseMessageCell {
     }
     
     private func setupCell() {
-        bubbleView.backgroundColor = .systemGreen.withAlphaComponent(0.8)
+        // Зеленый пузырь для ваших сообщений, расположенный справа
+        bubbleView.backgroundColor = UIColor(red: 0.2, green: 0.8, blue: 0.4, alpha: 1.0)
         messageLabel.textColor = .white
+        
+        // Тень для пузыря
+        bubbleView.layer.shadowColor = UIColor.black.cgColor
+        bubbleView.layer.shadowOffset = CGSize(width: 0, height: 1)
+        bubbleView.layer.shadowOpacity = 0.2
+        bubbleView.layer.shadowRadius = 3
+        bubbleView.layer.masksToBounds = false
         
         contentView.addSubview(bubbleView)
         bubbleView.addSubview(messageLabel)
         bubbleView.addSubview(timeLabel)
         contentView.addSubview(readStatusImageView)
         
+        // Размещаем пузырь сообщения справа
         bubbleView.snp.makeConstraints { make in
             make.top.equalToSuperview().offset(4)
             make.bottom.equalToSuperview().offset(-4)
-            make.trailing.equalToSuperview().offset(-16)
-            make.width.lessThanOrEqualTo(250)
+            make.trailing.equalToSuperview().offset(-16) // Привязка к правому краю
+            make.width.lessThanOrEqualTo(280)
         }
         
         messageLabel.snp.makeConstraints { make in
@@ -101,13 +111,14 @@ class OutgoingMessageCell: BaseMessageCell {
         }
         
         readStatusImageView.snp.makeConstraints { make in
-            make.leading.equalTo(bubbleView.snp.leading).offset(-16)
-            make.bottom.equalTo(bubbleView)
+            make.leading.equalTo(timeLabel.snp.trailing).offset(4)
+            make.centerY.equalTo(timeLabel)
             make.width.height.equalTo(12)
         }
     }
 }
 
+// Входящие сообщения - сообщения собеседника (слева)
 class IncomingMessageCell: BaseMessageCell {
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -120,18 +131,27 @@ class IncomingMessageCell: BaseMessageCell {
     }
     
     private func setupCell() {
-        bubbleView.backgroundColor = .systemGray5
-        messageLabel.textColor = .label
+        // Серый пузырь для входящих сообщений, расположенный слева
+        bubbleView.backgroundColor = UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 1.0)
+        messageLabel.textColor = .black
+        
+        // Тень для пузыря
+        bubbleView.layer.shadowColor = UIColor.black.cgColor
+        bubbleView.layer.shadowOffset = CGSize(width: 0, height: 1)
+        bubbleView.layer.shadowOpacity = 0.2
+        bubbleView.layer.shadowRadius = 3
+        bubbleView.layer.masksToBounds = false
         
         contentView.addSubview(bubbleView)
         bubbleView.addSubview(messageLabel)
         bubbleView.addSubview(timeLabel)
         
+        // Размещаем пузырь сообщения слева
         bubbleView.snp.makeConstraints { make in
             make.top.equalToSuperview().offset(4)
             make.bottom.equalToSuperview().offset(-4)
-            make.leading.equalToSuperview().offset(16)
-            make.width.lessThanOrEqualTo(250)
+            make.leading.equalToSuperview().offset(16) // Привязка к левому краю
+            make.width.lessThanOrEqualTo(280)
         }
         
         messageLabel.snp.makeConstraints { make in

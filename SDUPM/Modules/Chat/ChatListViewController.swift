@@ -1,5 +1,3 @@
-// Путь: SDUPM/Modules/Chat/ChatListViewController.swift
-
 import UIKit
 import SnapKit
 
@@ -10,13 +8,13 @@ protocol ChatListViewProtocol: AnyObject {
     func showError(message: String)
 }
 
+
 class ChatListViewController: UIViewController, ChatListViewProtocol {
     
     private let presenter = ChatListPresenter()
     private var chats: [Chat] = []
     
     // MARK: - UI Components
-    
     private let tableView: UITableView = {
         let tableView = UITableView()
         tableView.register(ChatListCell.self, forCellReuseIdentifier: "ChatListCell")
@@ -179,10 +177,10 @@ class ChatListViewController: UIViewController, ChatListViewProtocol {
     
     func showError(message: String) {
         refreshControl.endRefreshing()
-        
-        let alert = UIAlertController(title: "Ошибка", message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+//        
+//        let alert = UIAlertController(title: "Ошибка", message: message, preferredStyle: .alert)
+//        alert.addAction(UIAlertAction(title: "OK", style: .default))
+//        present(alert, animated: true)
     }
 }
 

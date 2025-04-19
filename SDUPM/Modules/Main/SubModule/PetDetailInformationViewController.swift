@@ -474,13 +474,13 @@ extension MainPetDetailViewController: PetDetailViewProtocol {
     }
     
     func showError(_ message: String) {
-        print("MainPetDetailViewController: showError called with message: \(message)")
-        DispatchQueue.main.async { [weak self] in
-            self?.activityIndicator.stopAnimating()
-            let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
-            self?.present(alert, animated: true)
-        }
+//        print("MainPetDetailViewController: showError called with message: \(message)")
+//        DispatchQueue.main.async { [weak self] in
+//            self?.activityIndicator.stopAnimating()
+//            let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+//            alert.addAction(UIAlertAction(title: "OK", style: .default))
+//            self?.present(alert, animated: true)
+//        }
     }
 }
 
