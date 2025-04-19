@@ -9,6 +9,7 @@ class ChatViewController: UIViewController {
     private var messages: [ChatMessage] = []
     private var currentUserId: Int = 1 // Значение будет получено из UserDefaults
     private let presenter: ChatPresenter
+    private var isShowingAlert = false
     
     // MARK: - UI Components
     
@@ -102,7 +103,13 @@ class ChatViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        presenter.fetchChatDetails()
         presenter.fetchMessages()
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // Подключаем WebSocket только после того, как view полностью загружен
         presenter.connectToWebSocket()
     }
     
@@ -214,9 +221,6 @@ class ChatViewController: UIViewController {
         // Очищаем поле ввода
         messageTextView.text = ""
         updateTextViewHeight()
-        
-        // Уведомляем собеседника о наборе текста
-        presenter.sendTypingEvent()
     }
     
     @objc private func keyboardWillShow(notification: Notification) {
@@ -262,11 +266,46 @@ class ChatViewController: UIViewController {
             self.view.layoutIfNeeded()
         }
     }
+    
+    
+    
+    // Вспомогательная функция для безопасного отображения алертов
+    private func showAlertIfPossible(title: String, message: String) {
+        guard !isShowingAlert,
+              let rootVC = UIApplication.shared.windows.first?.rootViewController else {
+            return
+        }
+        
+        // Находим верхний VC, на котором можно показать алерт
+        var topVC = rootVC
+        while let presentedVC = topVC.presentedViewController,
+              !(presentedVC is UIAlertController) {
+            topVC = presentedVC
+        }
+        
+        // Если уже отображается алерт, ничего не делаем
+        if topVC.presentedViewController is UIAlertController {
+            return
+        }
+        
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+            self.isShowingAlert = false
+        })
+        
+        isShowingAlert = true
+        topVC.present(alert, animated: true)
+    }
 }
 
 // MARK: - ChatViewProtocol
 
 extension ChatViewController: ChatViewProtocol {
+    func updateChatInfo(_ chat: Chat) {
+        title = chat.otherUserName
+        // Здесь можно обновить другие элементы интерфейса, если необходимо
+    }
+    
     func setMessages(_ messages: [ChatMessage]) {
         self.messages = messages.reversed() // Инвертируем порядок сообщений
         DispatchQueue.main.async {
@@ -316,9 +355,9 @@ extension ChatViewController: ChatViewProtocol {
     
     func showError(message: String) {
         DispatchQueue.main.async {
-            let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
-            self.present(alert, animated: true)
+            // Используем безопасный метод отображения алерта
+            self.showAlertIfPossible(title: "Ошибка", message: message)
+            print("Error: \(message)")
         }
     }
 }

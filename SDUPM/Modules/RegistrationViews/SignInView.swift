@@ -286,7 +286,12 @@ class SignInView: UIViewController, UITextFieldDelegate {
         showLoadingOnButton()
         
         let apiSender = SignInViewModel()
-        apiSender.sendUserData(fullName: fullName, email: email, password: password, phoneNumber: phone) { [weak self] result in
+        apiSender.sendUserData(
+            fullName: fullName,
+            email: email,
+            password: password,
+            phoneNumber: phone
+        ) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 self.hideLoadingOnButton()
@@ -305,7 +310,16 @@ class SignInView: UIViewController, UITextFieldDelegate {
                         
                         self.present(confirmVC, animated: true)
                     } else {
-                        self.showAlert(title: "Registration Failed", message: message)
+                        let confirmVC = ConfirmEmailViewController(email: email)
+                        confirmVC.modalPresentationStyle = .pageSheet
+                        
+                        if let sheet = confirmVC.sheetPresentationController {
+                            sheet.detents = [.medium()]
+                            sheet.prefersGrabberVisible = true
+                            sheet.preferredCornerRadius = 24
+                        }
+                        
+                        self.present(confirmVC, animated: true)
                     }
                 case .failure(let error):
                     self.showAlert(title: "Error", message: error.localizedDescription)

@@ -139,6 +139,11 @@ class CreateChatViewController: UIViewController, CreateChatViewProtocol {
         dismiss(animated: true)
     }
     
+    func setupWithPet(petId: Int, userId: Int) {
+        petIdTextField.text = String(petId)
+        userIdTextField.text = String(userId)
+    }
+    
     @objc private func createButtonTapped() {
         guard let petIdText = petIdTextField.text, !petIdText.isEmpty,
               let userIdText = userIdTextField.text, !userIdText.isEmpty,

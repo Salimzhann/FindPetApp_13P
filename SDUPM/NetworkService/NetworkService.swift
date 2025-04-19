@@ -51,7 +51,7 @@ class NetworkServiceProvider {
     
     /// Получение токена авторизации из UserDefaults
     private func getToken() -> String? {
-        return UserDefaults.standard.string(forKey: LoginInViewModel.tokenIdentifier)
+        return UserDefaults.standard.string(forKey: LoginViewModel.tokenIdentifier)
     }
     
     /// Создание общего URL запроса с авторизацией
@@ -654,6 +654,9 @@ class NetworkServiceProvider {
     // MARK: - Authentication API Methods
     
     /// Вход в систему
+    // Обновите метод login в NetworkServiceProvider так, чтобы он возвращал данные в нужном формате:
+
+    /// Вход в систему
     func login(email: String, password: String, completion: @escaping (Result<String, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/auth/login") else {
             DispatchQueue.main.async {
@@ -699,11 +702,10 @@ class NetworkServiceProvider {
             }
             
             do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let accessToken = json["access_token"] as? String {
-                    UserDefaults.standard.setValue(accessToken, forKey: LoginInViewModel.tokenIdentifier)
+                // Преобразуем данные в строку JSON для дальнейшей обработки в LoginInViewModel
+                if let jsonString = String(data: data, encoding: .utf8) {
                     DispatchQueue.main.async {
-                        completion(.success(accessToken))
+                        completion(.success(jsonString))
                     }
                 } else {
                     DispatchQueue.main.async {
@@ -1061,6 +1063,91 @@ class NetworkServiceProvider {
         
         task.resume()
     }
+    // Добавьте этот метод в класс NetworkServiceProvider в файле SDUPM/NetworkService/NetworkService.swift
+    
+    func getChat(chatId: Int, completion: @escaping (Result<Chat, Error>) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/chats/\(chatId)") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        let request = createAuthorizedRequest(url: url, method: "GET")
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.unknownError(error)))
+                }
+                return
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                }
+                return
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                }
+                return
+            }
+            
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.noData))
+                }
+                return
+            }
+            
+            do {
+                // Для отладки выводим полученный JSON
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("Chat API response: \(jsonString)")
+                }
+                
+                let decoder = JSONDecoder()
+                var chat = try decoder.decode(Chat.self, from: data)
+                
+                // Заполняем UI-данные
+                let otherUserName = "User \(chat.user1_id == UserDefaults.standard.integer(forKey: "current_user_id") ? chat.user2_id : chat.user1_id)"
+                chat.otherUserName = otherUserName
+                chat.petName = "Pet \(chat.pet_id)"
+                
+                DispatchQueue.main.async {
+                    completion(.success(chat))
+                }
+            } catch {
+                print("Decoding error: \(error)")
+                
+                // Более подробная информация об ошибке для отладки
+                if let decodingError = error as? DecodingError {
+                    switch decodingError {
+                    case .keyNotFound(let key, let context):
+                        print("Key '\(key)' not found: \(context.debugDescription)")
+                    case .valueNotFound(let type, let context):
+                        print("Value '\(type)' not found: \(context.debugDescription)")
+                    case .typeMismatch(let type, let context):
+                        print("Type mismatch for '\(type)': \(context.debugDescription)")
+                    case .dataCorrupted(let context):
+                        print("Data corrupted: \(context.debugDescription)")
+                    @unknown default:
+                        print("Unknown decoding error")
+                    }
+                }
+                
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.decodingFailed(error)))
+                }
+            }
+        }
+        
+        task.resume()
+    }
     func sendMessage(chatId: Int, content: String, completion: @escaping (Result<ChatMessage, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/chats/\(chatId)/messages") else {
             DispatchQueue.main.async {
@@ -1118,7 +1205,7 @@ class NetworkServiceProvider {
                     }
                 }
             }
-           
+            
             task.resume()
         } catch {
             DispatchQueue.main.async {

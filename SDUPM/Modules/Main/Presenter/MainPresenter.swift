@@ -6,7 +6,9 @@ class MainPresenter: MainPresenterProtocol {
     weak var view: MainViewProtocol?
     
     func didTapDetail(id: Int) {
-        let vc = PetDetailInformationViewController(id: id)
+        print("MainPresenter: Opening pet details for id \(id)")
+        // Используем новый MainPetDetailViewController вместо PetDetailInformationViewController
+        let vc = MainPetDetailViewController(petId: id)
         vc.hidesBottomBarWhenPushed = true
         view?.navigationController?.pushViewController(vc, animated: true)
     }
@@ -22,6 +24,7 @@ class MainPresenter: MainPresenterProtocol {
                 case .success(let response):
                     // Преобразуем APILostPet в LostPet
                     let lostPets = response.items.map { $0.toUIModel() }
+                    print("MainPresenter: Fetched \(lostPets.count) lost pets")
                     self?.view?.updatePets(lostPets)
                 case .failure(let error):
                     self?.view?.showError(message: error.localizedDescription)
@@ -39,6 +42,7 @@ class MainPresenter: MainPresenterProtocol {
                 
                 if let pets = pets {
                     let foundPets = pets.map { LostPet(from: $0) }
+                    print("MainPresenter: Fetched \(foundPets.count) found pets")
                     self?.view?.updatePets(foundPets)
                 } else if let error = error {
                     self?.view?.showError(message: error.localizedDescription)

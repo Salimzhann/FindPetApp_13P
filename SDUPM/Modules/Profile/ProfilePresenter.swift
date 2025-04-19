@@ -69,7 +69,7 @@ class ProfilePresenter: ProfilePresenterProtocol {
     
     func logout() {
         UserDefaults.standard.removeObject(forKey: LoginView.isActive)
-        UserDefaults.standard.removeObject(forKey: LoginInViewModel.tokenIdentifier)
+        UserDefaults.standard.removeObject(forKey: LoginViewModel.tokenIdentifier)
         
         view?.navigateToLogin()
     }

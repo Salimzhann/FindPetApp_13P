@@ -44,6 +44,7 @@
 		045C307D2DB2CD3A007A0ED0 /* ChatPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C307C2DB2CD39007A0ED0 /* ChatPresenter.swift */; };
 		045C307F2DB2D4DA007A0ED0 /* MessageCells.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C307E2DB2D4D7007A0ED0 /* MessageCells.swift */; };
 		045C30812DB2DBA6007A0ED0 /* CreateChatPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C30802DB2DBA6007A0ED0 /* CreateChatPresenter.swift */; };
+		045C30832DB30172007A0ED0 /* LoginResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C30822DB30172007A0ED0 /* LoginResponse.swift */; };
 		19213FB42CC3C04B006D8BE1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FB32CC3C04B006D8BE1 /* AppDelegate.swift */; };
 		19213FB62CC3C04B006D8BE1 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FB52CC3C04B006D8BE1 /* SceneDelegate.swift */; };
 		19213FB82CC3C04B006D8BE1 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FB72CC3C04B006D8BE1 /* SignInView.swift */; };
@@ -95,6 +96,7 @@
 		045C307C2DB2CD39007A0ED0 /* ChatPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatPresenter.swift; sourceTree = "<group>"; };
 		045C307E2DB2D4D7007A0ED0 /* MessageCells.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageCells.swift; sourceTree = "<group>"; };
 		045C30802DB2DBA6007A0ED0 /* CreateChatPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateChatPresenter.swift; sourceTree = "<group>"; };
+		045C30822DB30172007A0ED0 /* LoginResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginResponse.swift; sourceTree = "<group>"; };
 		19213FB02CC3C04B006D8BE1 /* SDUPM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SDUPM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		19213FB32CC3C04B006D8BE1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		19213FB52CC3C04B006D8BE1 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -321,6 +323,7 @@
 				044C3BC62DAE0AB9004D9745 /* PetSearchResponse.swift */,
 				044C3BB72DA8C0F6004D9745 /* ProfileModel.swift */,
 				040907B12DB2A08F00862F6A /* LostPet.swift */,
+				045C30822DB30172007A0ED0 /* LoginResponse.swift */,
 			);
 			path = NetworkService;
 			sourceTree = "<group>";
@@ -416,6 +419,7 @@
 				045000522D9D23D0004EE34A /* MyPetModel.swift in Sources */,
 				0450003B2D9C10DD004EE34A /* LosePetsModel.swift in Sources */,
 				044C3BBE2DAA157D004D9745 /* MyPetDetailPresenter.swift in Sources */,
+				045C30832DB30172007A0ED0 /* LoginResponse.swift in Sources */,
 				19213FD22CC4E454006D8BE1 /* NavigationViewModel.swift in Sources */,
 				045C30742DB2CCBA007A0ED0 /* ChatListPresenter.swift in Sources */,
 				19213FD52CC4E4A7006D8BE1 /* MainView.swift in Sources */,

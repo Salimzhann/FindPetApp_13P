@@ -14,15 +14,13 @@ var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         
-        window?.rootViewController = UINavigationController(rootViewController: SignInView())
+        let token = UserDefaults.standard.bool(forKey: LoginView.isActive)
         
-//        let token = UserDefaults.standard.bool(forKey: LoginView.isActive)
-//        
-//        if token {
-//            window?.rootViewController = UINavigationController(rootViewController: NavigationViewModel())
-//        } else {
-//            window?.rootViewController = UINavigationController(rootViewController: SignInView())
-//        }
+        if token {
+            window?.rootViewController = UINavigationController(rootViewController: NavigationViewModel())
+        } else {
+            window?.rootViewController = UINavigationController(rootViewController: SignInView())
+        }
         window?.makeKeyAndVisible()
         return true
     }
