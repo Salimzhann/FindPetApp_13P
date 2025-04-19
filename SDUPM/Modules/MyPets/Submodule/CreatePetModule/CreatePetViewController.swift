@@ -221,7 +221,18 @@ class CreatePetViewController: UIViewController, UITextViewDelegate {
             images: selectedImages
         ) { success in
             if success {
-                self.onPetAdded?(MyPetModel(id: index, name: name, species: category, breed: breed, age: age, images: self.selectedImages, status: self.statusSegmentedControl.selectedSegmentIndex == 1 ? "lost" : "not lost", description: description, gender: gender))
+                self.onPetAdded?(MyPetModel(
+                    id: index,
+                    name: name,
+                    species: category,
+                    breed: breed,
+                    age: age,
+                    images: self.selectedImages,
+                    status: self.statusSegmentedControl.selectedSegmentIndex == 1 ? "lost" : "not lost",
+                    color: color,
+                    description: description,
+                    gender: gender)
+                )
                 self.dismiss(animated: true)
             } else {
                 self.showErrorAlert(message: "Ошибка при загрузке данных питомца")

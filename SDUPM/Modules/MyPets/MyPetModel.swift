@@ -16,6 +16,7 @@ struct MyPetModel {
     let age: String
     let images: [UIImage]
     let status: String
+    let color: String
     let description: String
     let gender: String
 //    let lostDate: String

@@ -10,4 +10,8 @@ import Foundation
 
 class MyPetDetailPresenter {
     weak var view: MyPetDetailViewController?
+    
+    func editDidTap(model: MyPetModel) {
+        view?.navigationController?.pushViewController(EditPetViewController(item: model), animated: true)
+    }
 }

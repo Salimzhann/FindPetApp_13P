@@ -15,6 +15,8 @@
 		044C3BBA2DA914A1004D9745 /* FoundPetViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044C3BB92DA914A1004D9745 /* FoundPetViewController.swift */; };
 		044C3BBC2DAA153F004D9745 /* MyPetDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044C3BBB2DAA153F004D9745 /* MyPetDetailViewController.swift */; };
 		044C3BBE2DAA157D004D9745 /* MyPetDetailPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044C3BBD2DAA157D004D9745 /* MyPetDetailPresenter.swift */; };
+		044C3BC32DAACDE5004D9745 /* EditPetViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044C3BC22DAACDE5004D9745 /* EditPetViewController.swift */; };
+		044C3BC52DAE063A004D9745 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 044C3BC42DAE063A004D9745 /* Assets.xcassets */; };
 		0450002C2D9C04DB004EE34A /* SnapKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0450002B2D9C04DB004EE34A /* SnapKit */; };
 		045000332D9C082B004EE34A /* FindPetViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045000322D9C082B004EE34A /* FindPetViewController.swift */; };
 		045000352D9C084B004EE34A /* MyPetViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045000342D9C084B004EE34A /* MyPetViewController.swift */; };
@@ -32,8 +34,6 @@
 		19213FB42CC3C04B006D8BE1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FB32CC3C04B006D8BE1 /* AppDelegate.swift */; };
 		19213FB62CC3C04B006D8BE1 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FB52CC3C04B006D8BE1 /* SceneDelegate.swift */; };
 		19213FB82CC3C04B006D8BE1 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FB72CC3C04B006D8BE1 /* SignInView.swift */; };
-		19213FBD2CC3C04C006D8BE1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 19213FBC2CC3C04C006D8BE1 /* Assets.xcassets */; };
-		19213FC02CC3C04C006D8BE1 /* Base in Resources */ = {isa = PBXBuildFile; fileRef = 19213FBF2CC3C04C006D8BE1 /* Base */; };
 		19213FCA2CC3C2B6006D8BE1 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FC92CC3C2B6006D8BE1 /* LoginView.swift */; };
 		19213FD02CC4DD97006D8BE1 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FCF2CC4DD97006D8BE1 /* ProfileView.swift */; };
 		19213FD22CC4E454006D8BE1 /* NavigationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FD12CC4E454006D8BE1 /* NavigationViewModel.swift */; };
@@ -52,6 +52,8 @@
 		044C3BB92DA914A1004D9745 /* FoundPetViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundPetViewController.swift; sourceTree = "<group>"; };
 		044C3BBB2DAA153F004D9745 /* MyPetDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPetDetailViewController.swift; sourceTree = "<group>"; };
 		044C3BBD2DAA157D004D9745 /* MyPetDetailPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPetDetailPresenter.swift; sourceTree = "<group>"; };
+		044C3BC22DAACDE5004D9745 /* EditPetViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditPetViewController.swift; sourceTree = "<group>"; };
+		044C3BC42DAE063A004D9745 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = SDUPM/Assets.xcassets; sourceTree = SOURCE_ROOT; };
 		045000322D9C082B004EE34A /* FindPetViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindPetViewController.swift; sourceTree = "<group>"; };
 		045000342D9C084B004EE34A /* MyPetViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPetViewController.swift; sourceTree = "<group>"; };
 		045000372D9C107C004EE34A /* LosePetsCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LosePetsCell.swift; sourceTree = "<group>"; };
@@ -69,8 +71,6 @@
 		19213FB32CC3C04B006D8BE1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		19213FB52CC3C04B006D8BE1 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		19213FB72CC3C04B006D8BE1 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
-		19213FBC2CC3C04C006D8BE1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		19213FBF2CC3C04C006D8BE1 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		19213FC12CC3C04C006D8BE1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		19213FC92CC3C2B6006D8BE1 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		19213FCF2CC4DD97006D8BE1 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
@@ -93,6 +93,32 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		044C3BBF2DAACDA5004D9745 /* CreatePetModule */ = {
+			isa = PBXGroup;
+			children = (
+				0450004B2D9C41E9004EE34A /* CreatePetViewController.swift */,
+				0450004D2D9D1EC3004EE34A /* CreatePetViewPresenter.swift */,
+			);
+			path = CreatePetModule;
+			sourceTree = "<group>";
+		};
+		044C3BC02DAACDB6004D9745 /* PetDetailModule */ = {
+			isa = PBXGroup;
+			children = (
+				044C3BBB2DAA153F004D9745 /* MyPetDetailViewController.swift */,
+				044C3BBD2DAA157D004D9745 /* MyPetDetailPresenter.swift */,
+			);
+			path = PetDetailModule;
+			sourceTree = "<group>";
+		};
+		044C3BC12DAACDCB004D9745 /* EditPetModule */ = {
+			isa = PBXGroup;
+			children = (
+				044C3BC22DAACDE5004D9745 /* EditPetViewController.swift */,
+			);
+			path = EditPetModule;
+			sourceTree = "<group>";
+		};
 		045000292D9C0423004EE34A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -169,10 +195,9 @@
 		0450004A2D9C41D3004EE34A /* Submodule */ = {
 			isa = PBXGroup;
 			children = (
-				0450004B2D9C41E9004EE34A /* CreatePetViewController.swift */,
-				0450004D2D9D1EC3004EE34A /* CreatePetViewPresenter.swift */,
-				044C3BBB2DAA153F004D9745 /* MyPetDetailViewController.swift */,
-				044C3BBD2DAA157D004D9745 /* MyPetDetailPresenter.swift */,
+				044C3BC12DAACDCB004D9745 /* EditPetModule */,
+				044C3BC02DAACDB6004D9745 /* PetDetailModule */,
+				044C3BBF2DAACDA5004D9745 /* CreatePetModule */,
 			);
 			path = Submodule;
 			sourceTree = "<group>";
@@ -210,8 +235,7 @@
 		19213FC72CC3C0E5006D8BE1 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				19213FBC2CC3C04C006D8BE1 /* Assets.xcassets */,
-				19213FBE2CC3C04C006D8BE1 /* LaunchScreen.storyboard */,
+				044C3BC42DAE063A004D9745 /* Assets.xcassets */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -339,8 +363,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				19213FBD2CC3C04C006D8BE1 /* Assets.xcassets in Resources */,
-				19213FC02CC3C04C006D8BE1 /* Base in Resources */,
+				044C3BC52DAE063A004D9745 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -355,6 +378,7 @@
 				0450003B2D9C10DD004EE34A /* LosePetsModel.swift in Sources */,
 				044C3BBE2DAA157D004D9745 /* MyPetDetailPresenter.swift in Sources */,
 				19213FD22CC4E454006D8BE1 /* NavigationViewModel.swift in Sources */,
+				044C3BC32DAACDE5004D9745 /* EditPetViewController.swift in Sources */,
 				19213FD52CC4E4A7006D8BE1 /* MainView.swift in Sources */,
 				045000352D9C084B004EE34A /* MyPetViewController.swift in Sources */,
 				045000412D9C2FE6004EE34A /* PetDetailInformationViewController.swift in Sources */,
@@ -386,17 +410,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXVariantGroup section */
-		19213FBE2CC3C04C006D8BE1 /* LaunchScreen.storyboard */ = {
-			isa = PBXVariantGroup;
-			children = (
-				19213FBF2CC3C04C006D8BE1 /* Base */,
-			);
-			name = LaunchScreen.storyboard;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		19213FC22CC3C04C006D8BE1 /* Debug */ = {

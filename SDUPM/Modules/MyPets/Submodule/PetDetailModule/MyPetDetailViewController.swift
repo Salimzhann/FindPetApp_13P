@@ -54,6 +54,15 @@ class MyPetDetailViewController: UIViewController {
         label.numberOfLines = 0
         return label
     }()
+    private let editButton: UIButton = {
+        let button = UIButton()
+        button.setTitle("Edit", for: .normal)
+        button.backgroundColor = .systemGray4
+        button.layer.cornerRadius = 8
+        button.addTarget(self, action: #selector(editTapped), for: .touchUpInside)
+        button.titleLabel?.font = .systemFont(ofSize: 17, weight: .medium)
+        return button
+    }()
     private lazy var stackView: UIStackView = {
         let stackView = UIStackView(arrangedSubviews: [makeSeparator(),
                                                        ageLabel,
@@ -134,6 +143,13 @@ class MyPetDetailViewController: UIViewController {
             make.leading.equalToSuperview().inset(20)
         }
         
+        view.addSubview(editButton)
+        editButton.snp.makeConstraints { make in
+            make.top.equalTo(nameLabel.snp.top)
+            make.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(24)
+            make.width.equalTo(60)
+        }
         view.addSubview(stackView)
         stackView.snp.makeConstraints { make in
             make.top.equalTo(nameLabel.snp.bottom).offset(10)
@@ -145,6 +161,10 @@ class MyPetDetailViewController: UIViewController {
             make.top.equalTo(stackView.snp.bottom).offset(5)
             make.leading.trailing.equalToSuperview().inset(20)
         }
+    }
+    
+    @objc private func editTapped() {
+        presenter.editDidTap(model: model)
     }
     
     private func makeSeparator() -> UIView {
