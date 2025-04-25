@@ -11,20 +11,11 @@ class MainPresenter: MainPresenterProtocol {
     func didTapDetail(id: Int) {
         print("MainPresenter: Opening pet details for id \(id)")
         
-        // Ищем животное с нужным ID в текущих данных
-        if let pet = currentPets.first(where: { $0.id == id }) {
-            print("MainPresenter: Found pet with id \(id) in current data")
-            let vc = MainPetDetailViewController(pet: pet)
-            vc.hidesBottomBarWhenPushed = true
-            view?.navigationController?.pushViewController(vc, animated: true)
-        } else {
-            print("MainPresenter: Pet with id \(id) not found in current data")
-            let vc = MainPetDetailViewController(petId: id)
-            vc.hidesBottomBarWhenPushed = true
-            view?.navigationController?.pushViewController(vc, animated: true)
-        }
+        // Use the new initializer name to avoid ambiguity
+        let vc = LostPetDetailViewController(withPetId: id)
+        vc.hidesBottomBarWhenPushed = true
+        view?.navigationController?.pushViewController(vc, animated: true)
     }
-    
     func fetchLostPets() {
         view?.showLoading()
         
