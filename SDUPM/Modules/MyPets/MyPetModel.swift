@@ -7,8 +7,6 @@
 
 // File path: SDUPM/Modules/MyPets/MyPetModel.swift
 
-// File path: SDUPM/Modules/MyPets/MyPetModel.swift
-
 import UIKit
 
 struct MyPetModel {
@@ -17,6 +15,7 @@ struct MyPetModel {
     let species: String
     let breed: String
     let age: String
+    let color: String // Добавлено новое свойство color
     var images: [UIImage]  // Using 'var' to allow modification
     let status: String
     let description: String
@@ -60,6 +59,7 @@ struct MyPetModel {
             species: self.species,
             breed: self.breed,
             age: self.age,
+            color: self.color, // Добавлено в метод
             images: newImages,
             status: self.status,
             description: self.description,

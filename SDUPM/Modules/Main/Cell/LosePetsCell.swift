@@ -35,27 +35,14 @@ class LosePetsCell: UICollectionViewCell {
         return label
     }()
     
-    private let ageLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 13, weight: .regular)
-        label.textColor = .secondaryLabel
-        return label
-    }()
-
     var item: LostPet? {
         didSet {
             if let item = item {
                 nameLabel.text = item.name
-                speciesLabel.text = "Type: \(item.species.capitalized)"
-                
-                if let age = item.age {
-                    ageLabel.text = "Age: \(age) year\(age > 1 ? "s" : "")"
-                } else {
-                    ageLabel.text = "Age: unknown"
-                }
+                speciesLabel.text = "Type: \(item.species)"
                 
                 if let gender = item.gender {
-                    genderLabel.text = "Gender: \(gender.capitalized)"
+                    genderLabel.text = "Gender: \(gender)"
                 } else {
                     genderLabel.text = "Gender: unknown"
                 }
@@ -86,7 +73,6 @@ class LosePetsCell: UICollectionViewCell {
         nameLabel.text = nil
         speciesLabel.text = nil
         genderLabel.text = nil
-        ageLabel.text = nil
     }
 
     private func setupView() {
@@ -114,17 +100,10 @@ class LosePetsCell: UICollectionViewCell {
             make.trailing.equalToSuperview().inset(10)
         }
         
-        addSubview(ageLabel)
-        ageLabel.snp.makeConstraints { make in
-            make.top.equalTo(speciesLabel.snp.bottom).offset(5)
-            make.leading.equalTo(speciesLabel)
-            make.trailing.equalToSuperview().inset(10)
-        }
-        
         addSubview(genderLabel)
         genderLabel.snp.makeConstraints { make in
-            make.top.equalTo(ageLabel.snp.bottom).offset(5)
-            make.leading.equalTo(ageLabel)
+            make.top.equalTo(speciesLabel.snp.bottom).offset(5)
+            make.leading.equalTo(speciesLabel)
             make.trailing.equalToSuperview().inset(10)
             make.bottom.lessThanOrEqualToSuperview().inset(10)
         }

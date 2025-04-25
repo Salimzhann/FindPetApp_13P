@@ -1,13 +1,4 @@
-//
-//  MyPetViewController.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 01.04.2025.
-//
-
-// File path: SDUPM/Modules/MyPets/MyPetViewController.swift
-
-// File path: SDUPM/Modules/MyPets/MyPetViewController.swift
+// Путь: SDUPM/Modules/MyPets/MyPetViewController.swift
 
 import UIKit
 import SnapKit
@@ -23,10 +14,11 @@ protocol IMyPetViewController: AnyObject {
 class MyPetViewController: UIViewController, IMyPetViewController {
     
     private let presenter: IMyPetPresenter = MyPetPresenter()
+    private let editPresenter = EditPetViewPresenter()
     
     var myPetsArray: [MyPetModel] = [] {
         didSet {
-            // Ensure UI updates happen on the main thread
+            // Убедимся, что обновляем UI в основном потоке
             if Thread.isMainThread {
                 collectionView.reloadData()
                 updateEmptyState()
@@ -310,6 +302,68 @@ class MyPetViewController: UIViewController, IMyPetViewController {
             }
         }
     }
+    
+    // MARK: - Show Edit View
+    
+    private func showEditPetView(for pet: MyPetModel) {
+        let editVC = EditPetViewController(pet: pet)
+        editVC.delegate = self
+        present(editVC, animated: true)
+    }
+    
+    // MARK: - Status Update Action
+    
+    private func showStatusUpdateOptions(for pet: MyPetModel) {
+        let alertController = UIAlertController(
+            title: "Update Status",
+            message: "Select new status for \(pet.name)",
+            preferredStyle: .actionSheet
+        )
+        
+        let statusOptions: [(title: String, value: String)] = [
+            ("At Home", "home"),
+            ("Lost", "lost")
+        ]
+        
+        for option in statusOptions {
+            // Не показываем текущий статус
+            if option.value != pet.status {
+                alertController.addAction(UIAlertAction(title: option.title, style: .default) { [weak self] _ in
+                    self?.updatePetStatus(pet: pet, newStatus: option.value)
+                })
+            }
+        }
+        
+        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        present(alertController, animated: true)
+    }
+    
+    private func updatePetStatus(pet: MyPetModel, newStatus: String) {
+        // Показываем индикатор загрузки
+        showLoading()
+        
+        editPresenter.updatePetStatus(id: pet.id, status: newStatus) { [weak self] result in
+            guard let self = self else { return }
+            
+            DispatchQueue.main.async {
+                self.hideLoading()
+                
+                switch result {
+                case .success(let updatedPet):
+                    // Обновляем питомца в массиве
+                    if let index = self.myPetsArray.firstIndex(where: { $0.id == pet.id }) {
+                        self.myPetsArray[index] = updatedPet
+                        // Обновляем только конкретную ячейку вместо всей коллекции
+                        self.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
+                    }
+                    
+                case .failure(let error):
+                    self.showError(message: "Failed to update status: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
 }
 
 // MARK: - UICollectionView DataSource & Delegate
@@ -322,6 +376,17 @@ extension MyPetViewController: UICollectionViewDataSource, UICollectionViewDeleg
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: MyPetCell.identifier, for: indexPath) as! MyPetCell
         cell.configure(with: myPetsArray[indexPath.row])
+        
+        // Добавляем действие для кнопки редактирования
+        cell.onEditTapped = { [weak self] in
+            self?.showEditPetView(for: self?.myPetsArray[indexPath.row] ?? MyPetModel(
+                id: 0, name: "", species: "", breed: "", age: "",
+                color: "", // Добавьте этот параметр
+                images: [], status: "", description: "", gender: "",
+                photoURLs: [], lastSeenLocation: nil, lostDate: nil
+            ))
+        }
+        
         return cell
     }
     
@@ -331,8 +396,26 @@ extension MyPetViewController: UICollectionViewDataSource, UICollectionViewDeleg
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let pet = myPetsArray[indexPath.row]
-        let detailVC = MyPetDetailViewController(model: pet)
-        navigationController?.pushViewController(detailVC, animated: true)
+        let vc = MyPetDetailViewController(model: myPetsArray[indexPath.row])
+        self.navigationController?.pushViewController(vc, animated: true)
+    }
+}
+
+// MARK: - EditPetViewDelegate
+
+extension MyPetViewController: EditPetViewDelegate {
+    func petUpdated(pet: MyPetModel) {
+        // Находим и обновляем питомца в массиве
+        if let index = myPetsArray.firstIndex(where: { $0.id == pet.id }) {
+            // Создаем обновленную модель с сохранением существующих изображений
+            var updatedPet = pet
+            updatedPet.images = myPetsArray[index].images
+            
+            myPetsArray[index] = updatedPet
+            
+            DispatchQueue.main.async { [weak self] in
+                self?.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
+            }
+        }
     }
 }

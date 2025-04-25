@@ -39,6 +39,7 @@ class CreatePetViewPresenter {
                     species: petResponse.species,
                     breed: petResponse.breed ?? "",
                     age: String(petResponse.age ?? 0),
+                    color: petResponse.color ?? "",
                     images: photos, // We already have the images locally
                     status: status,
                     description: petResponse.distinctive_features ?? "",

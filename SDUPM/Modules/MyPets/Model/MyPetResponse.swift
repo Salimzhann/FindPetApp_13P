@@ -27,16 +27,6 @@ struct MyPetResponse: Codable {
     let lost_date: String?
     let owner_id: Int
     
-    var mainPhotoURL: URL? {
-        if let primaryPhoto = photos.first(where: { $0.is_primary }) {
-            return URL(string: primaryPhoto.photo_url)
-        } else if let firstPhoto = photos.first {
-            return URL(string: firstPhoto.photo_url)
-        }
-        return nil
-    }
-    
-    
     func toMyPetModel() -> MyPetModel {
         // Convert PetPhotoResponse array to UIImage array
         // In a real app, you would download the images first
@@ -48,7 +38,7 @@ struct MyPetResponse: Codable {
             species: species,
             breed: breed ?? "",
             age: String(age ?? 0),
-            color: color ?? "", //
+            color: color ?? "", // Добавлен параметр color
             images: [placeholderImage], // This would be loaded from photo URLs
             status: status,
             description: distinctive_features ?? "",
@@ -58,12 +48,13 @@ struct MyPetResponse: Codable {
             lostDate: lost_date
         )
     }
-}
-
-struct PetPhotoResponse: Codable {
-    let id: Int
-    let pet_id: Int
-    let photo_url: String
-    let is_primary: Bool
-    let created_at: String
+    
+    var mainPhotoURL: URL? {
+        if let primaryPhoto = photos.first(where: { $0.is_primary }) {
+            return URL(string: primaryPhoto.photo_url)
+        } else if let firstPhoto = photos.first {
+            return URL(string: firstPhoto.photo_url)
+        }
+        return nil
+    }
 }

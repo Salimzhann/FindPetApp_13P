@@ -1,11 +1,4 @@
-//
-//  MyPetCell.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 02.04.2025.
-//
-
-// File path: SDUPM/Modules/MyPets/MyPetCell.swift
+// Путь: SDUPM/Modules/MyPets/MyPetCell.swift
 
 import UIKit
 import SnapKit
@@ -79,11 +72,21 @@ class MyPetCell: UICollectionViewCell {
         return label
     }()
     
+    private let editButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setImage(UIImage(systemName: "pencil.circle.fill"), for: .normal)
+        button.tintColor = .systemGreen
+        return button
+    }()
+    
+    var onEditTapped: (() -> Void)?
+    
     // MARK: - Initialization
     
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupViews()
+        setupActions()
     }
     
     required init?(coder: NSCoder) {
@@ -100,6 +103,7 @@ class MyPetCell: UICollectionViewCell {
         containerView.addSubview(breedLabel)
         containerView.addSubview(genderLabel)
         containerView.addSubview(statusBadge)
+        containerView.addSubview(editButton)
         statusBadge.addSubview(statusLabel)
         
         containerView.snp.makeConstraints { make in
@@ -112,15 +116,21 @@ class MyPetCell: UICollectionViewCell {
             make.height.equalTo(100)
         }
         
+        editButton.snp.makeConstraints { make in
+            make.top.equalToSuperview().inset(12)
+            make.trailing.equalToSuperview().inset(12)
+            make.width.height.equalTo(30)
+        }
+        
         nameLabel.snp.makeConstraints { make in
             make.top.equalTo(petImageView).offset(2)
             make.leading.equalTo(petImageView.snp.trailing).offset(12)
-            make.trailing.equalToSuperview().inset(12)
+            make.trailing.equalTo(editButton.snp.leading).offset(-12)
         }
         
         statusBadge.snp.makeConstraints { make in
-            make.top.equalTo(nameLabel)
-            make.trailing.equalToSuperview().inset(12)
+            make.centerY.equalTo(nameLabel)
+            make.trailing.equalTo(editButton.snp.leading).offset(-12)
             make.height.equalTo(20)
         }
         
@@ -146,6 +156,14 @@ class MyPetCell: UICollectionViewCell {
             make.leading.equalTo(nameLabel)
             make.trailing.equalToSuperview().inset(12)
         }
+    }
+    
+    private func setupActions() {
+        editButton.addTarget(self, action: #selector(editButtonTapped), for: .touchUpInside)
+    }
+    
+    @objc private func editButtonTapped() {
+        onEditTapped?()
     }
     
     // MARK: - Configuration

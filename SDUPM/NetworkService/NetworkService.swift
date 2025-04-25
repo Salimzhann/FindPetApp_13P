@@ -615,6 +615,95 @@ class NetworkServiceProvider {
         
         task.resume()
     }
+    func updatePet(
+        petId: Int,
+        name: String? = nil,
+        species: String? = nil,
+        breed: String? = nil,
+        age: Int? = nil,
+        color: String? = nil,
+        gender: String? = nil,
+        distinctiveFeatures: String? = nil,
+        status: String? = nil,
+        lastSeenLocation: String? = nil,
+        completion: @escaping (Result<Pet, Error>) -> Void
+    ) {
+        guard let url = URL(string: "\(api)/api/v1/pets/\(petId)") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        var request = createAuthorizedRequest(url: url, method: "PATCH")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Строим тело запроса только с предоставленными полями
+        var body: [String: Any] = [:]
+        
+        if let name = name { body["name"] = name }
+        if let species = species { body["species"] = species }
+        if let breed = breed { body["breed"] = breed }
+        if let age = age { body["age"] = age }
+        if let color = color { body["color"] = color }
+        if let gender = gender { body["gender"] = gender }
+        if let distinctiveFeatures = distinctiveFeatures { body["distinctive_features"] = distinctiveFeatures }
+        if let status = status { body["status"] = status }
+        if let lastSeenLocation = lastSeenLocation { body["last_seen_location"] = lastSeenLocation }
+        
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: body)
+            request.httpBody = jsonData
+            
+            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.unknownError(error)))
+                    }
+                    return
+                }
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                    }
+                    return
+                }
+                
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                    }
+                    return
+                }
+                
+                guard let data = data else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.noData))
+                    }
+                    return
+                }
+                
+                do {
+                    let pet = try JSONDecoder().decode(Pet.self, from: data)
+                    DispatchQueue.main.async {
+                        completion(.success(pet))
+                    }
+                } catch {
+                    print("Decoding error: \(error)")
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.decodingFailed(error)))
+                    }
+                }
+            }
+            
+            task.resume()
+        } catch {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.unknownError(error)))
+            }
+        }
+    }
     func getPetDetails(petId: Int, completion: @escaping (Result<Pet, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/pets/lost/\(petId)") else {
             DispatchQueue.main.async {
@@ -1414,6 +1503,47 @@ class NetworkServiceProvider {
                 }
                 DispatchQueue.main.async {
                     completion(.failure(NetworkError.decodingFailed(error)))
+                }
+            }
+        }
+        
+        task.resume()
+    }
+
+    // MARK: - Delete Pet
+    func deletePet(petId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/pets/\(petId)") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        let request = createAuthorizedRequest(url: url, method: "DELETE")
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.unknownError(error)))
+                }
+                return
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                }
+                return
+            }
+            
+            if (200...299).contains(httpResponse.statusCode) {
+                DispatchQueue.main.async {
+                    completion(.success(()))
+                }
+            } else {
+                let errorMessage = data != nil ? String(data: data!, encoding: .utf8) : "Unknown error"
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
                 }
             }
         }
