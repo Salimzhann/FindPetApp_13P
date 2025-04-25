@@ -7,6 +7,7 @@
 import UIKit
 import SnapKit
 import PhotosUI
+import CoreLocation
 
 protocol IFindPetView: AnyObject {
     func showLoading()
@@ -15,10 +16,13 @@ protocol IFindPetView: AnyObject {
     func showError(message: String)
 }
 
-class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, IFindPetView {
+class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, IFindPetView, CLLocationManagerDelegate {
     
-    private var selectedImages: [UIImage] = []
+    // Изменено с private на fileprivate для доступа из расширений
+    fileprivate var selectedImages: [UIImage] = []
     private let presenter = FindPetPresenter()
+    private let locationManager = CLLocationManager()
+    private var currentLocation: CLLocationCoordinate2D?
     
     // MARK: - UI Components
     
@@ -79,6 +83,7 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
         setupCollectionView()
         configurePresenter()
         hideKeyboardWhenTappedAround()
+        setupLocationManager()
     }
     
     // MARK: - Setup Methods
@@ -98,7 +103,7 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
         
         view.addSubview(photoCollectionView)
         photoCollectionView.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(20)
+            make.top.equalTo(uploadPhotoButton)
             make.leading.equalTo(uploadPhotoButton.snp.trailing).offset(10)
             make.trailing.equalToSuperview().inset(20)
             make.height.equalTo(100)
@@ -150,6 +155,11 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
         searchButton.addTarget(self, action: #selector(searchPetTapped), for: .touchUpInside)
     }
     
+    private func setupLocationManager() {
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+    }
+    
     private func setupCollectionView() {
         photoCollectionView.delegate = self
         photoCollectionView.dataSource = self
@@ -157,6 +167,96 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
     }
     
     // MARK: - Actions
+    
+    private func requestLocationPermissionIfNeeded(completion: @escaping (Bool) -> Void) {
+        let authStatus = CLLocationManager.authorizationStatus()
+        
+        switch authStatus {
+        case .notDetermined:
+            // Set a temporary delegate to handle the authorization response
+            class AuthDelegate: NSObject, CLLocationManagerDelegate {
+                var completion: ((Bool) -> Void)?
+                
+                func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+                    switch status {
+                    case .authorizedWhenInUse, .authorizedAlways:
+                        completion?(true)
+                    default:
+                        completion?(false)
+                    }
+                }
+            }
+            
+            let tempDelegate = AuthDelegate()
+            tempDelegate.completion = completion
+            
+            // Store a reference to prevent deallocation
+            objc_setAssociatedObject(self, "tempAuthDelegate", tempDelegate, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            
+            locationManager.delegate = tempDelegate
+            locationManager.requestWhenInUseAuthorization()
+            
+        case .restricted, .denied:
+            completion(false)
+        case .authorizedWhenInUse, .authorizedAlways:
+            completion(true)
+        @unknown default:
+            completion(false)
+        }
+    }
+    
+    private func getLocation(completion: @escaping (CLLocationCoordinate2D?) -> Void) {
+        // Clear any previous location
+        currentLocation = nil
+        
+        // Set a timeout for location fetching (8 seconds)
+        let timeoutTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: false) { [weak self] _ in
+            // If we still don't have a location after timeout
+            if self?.currentLocation == nil {
+                completion(nil)
+                self?.locationManager.stopUpdatingLocation()
+            }
+        }
+        
+        // Override the location delegate method temporarily
+        class LocationDelegate: NSObject, CLLocationManagerDelegate {
+            var completion: ((CLLocationCoordinate2D?) -> Void)?
+            var timer: Timer?
+            
+            func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+                guard let location = locations.last else { return }
+                
+                // Call completion with success
+                completion?(location.coordinate)
+                
+                // Cancel the timeout timer
+                timer?.invalidate()
+                
+                // Stop further updates
+                manager.stopUpdatingLocation()
+            }
+            
+            func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+                // Call completion with failure
+                completion?(nil)
+                
+                // Cancel the timeout timer
+                timer?.invalidate()
+            }
+        }
+        
+        // Create and store the temporary delegate
+        let tempDelegate = LocationDelegate()
+        tempDelegate.completion = completion
+        tempDelegate.timer = timeoutTimer
+        
+        // Store a reference to prevent deallocation
+        objc_setAssociatedObject(self, "tempLocationDelegate", tempDelegate, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // Set the delegate and start
+        locationManager.delegate = tempDelegate
+        locationManager.startUpdatingLocation()
+    }
     
     @objc private func uploadPhotoTapped() {
         // Standard UIImagePicker
@@ -189,12 +289,162 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
         let gender = genderTextField.text?.isEmpty == true ? nil : genderTextField.text
         let breed = breedTextField.text?.isEmpty == true ? nil : breedTextField.text
         
+        // Ask user about search purpose
+        let alert = UIAlertController(
+            title: "Search Purpose",
+            message: "Are you looking for your own pet or to find a pet's owner?",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Find My Pet", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Show location confirmation and request
+            self.showLocationConfirmationAlert(
+                photo: self.selectedImages.first!,
+                species: species,
+                color: color,
+                gender: gender,
+                breed: breed,
+                isFindingOwner: false
+            )
+        })
+        
+        alert.addAction(UIAlertAction(title: "Find Pet Owner", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Show location confirmation and request
+            self.showLocationConfirmationAlert(
+                photo: self.selectedImages.first!,
+                species: species,
+                color: color,
+                gender: gender,
+                breed: breed
+            )
+        })
+        
+        present(alert, animated: true)
+    }
+    
+    private func showLocationConfirmationAlert(photo: UIImage, species: String, color: String, gender: String?, breed: String?, isFindingOwner: Bool = true) {
+        let alert = UIAlertController(
+            title: "Location Needed",
+            message: isFindingOwner
+                ? "To find the pet owner, we need your current location. Do you want to share your location?"
+                : "Sharing your location will help us find your pet. Do you want to share your location?",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Yes, Share Location", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Request location permission if needed
+            self.requestLocationPermissionIfNeeded { hasPermission in
+                if hasPermission {
+                    // Show loading indicator during location fetch
+                    DispatchQueue.main.async {
+                        self.view.isUserInteractionEnabled = false
+                        self.activityIndicator.startAnimating()
+                    }
+                    
+                    // Get current location
+                    self.getLocation { coordinates in
+                        DispatchQueue.main.async {
+                            self.view.isUserInteractionEnabled = true
+                            self.activityIndicator.stopAnimating()
+                            
+                            if let coordinates = coordinates {
+                                // Proceed with search using location
+                                print(coordinates, "uosefosif")
+                                self.performSearch(
+                                    photo: photo,
+                                    species: species.lowercased(),
+                                    color: color,
+                                    gender: gender,
+                                    breed: breed,
+                                    isFindingOwner: isFindingOwner,
+                                    coordinates: coordinates
+                                )
+                            } else {
+                                // Show error - couldn't get location
+                                self.showErrorAlert(message: "Could not determine your location. Please try again or search without location.")
+                            }
+                        }
+                    }
+                } else {
+                    // No permission - show alert
+                    DispatchQueue.main.async {
+                        self.showNoLocationPermissionAlert(
+                            photo: photo,
+                            species: species,
+                            color: color,
+                            gender: gender,
+                            breed: breed,
+                            isFindingOwner: isFindingOwner
+                        )
+                    }
+                }
+            }
+        })
+        
+        alert.addAction(UIAlertAction(title: "No, Search Without Location", style: .cancel) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Proceed without location
+            self.performSearch(
+                photo: photo,
+                species: species.lowercased(),
+                color: color,
+                gender: gender,
+                breed: breed,
+                isFindingOwner: isFindingOwner,
+                coordinates: nil
+            )
+        })
+        
+        present(alert, animated: true)
+    }
+    
+    private func showNoLocationPermissionAlert(photo: UIImage, species: String, color: String, gender: String?, breed: String?, isFindingOwner: Bool = true) {
+        let alert = UIAlertController(
+            title: "Location Access Denied",
+            message: "You have denied access to your location. You can change this in your device settings or search without location.",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Open Settings", style: .default) { _ in
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(url)
+            }
+        })
+        
+        alert.addAction(UIAlertAction(title: "Search Without Location", style: .cancel) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Proceed without location
+            self.performSearch(
+                photo: photo,
+                species: species.lowercased(),
+                color: color,
+                gender: gender,
+                breed: breed,
+                isFindingOwner: isFindingOwner,
+                coordinates: nil
+            )
+        })
+        
+        present(alert, animated: true)
+    }
+    
+    private func performSearch(photo: UIImage, species: String, color: String, gender: String?, breed: String?, isFindingOwner: Bool, coordinates: CLLocationCoordinate2D?) {
         presenter.searchPet(
-            photo: selectedImages.first!,
-            species: species.lowercased(),
+            photo: photo,
+            species: species,
             color: color,
             gender: gender,
-            breed: breed
+            breed: breed,
+            isFindingOwner: isFindingOwner,
+            coordinates: coordinates
         )
     }
     
@@ -206,6 +456,7 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
             self.searchButton.isEnabled = false
         }
     }
+    
     private func hideKeyboardWhenTappedAround() {
         let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
         tap.cancelsTouchesInView = false
@@ -215,6 +466,7 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
     @objc private func dismissKeyboard() {
         view.endEditing(true)
     }
+    
     func hideLoading() {
         DispatchQueue.main.async {
             self.activityIndicator.stopAnimating()
@@ -248,9 +500,9 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
     // MARK: - Helper Methods
     
     private func showErrorAlert(message: String) {
-//        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
-//        alert.addAction(UIAlertAction(title: "OK", style: .default))
-//        present(alert, animated: true)
+        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
     
     static func createTextField(placeholder: String, required: Bool = false, keyboardType: UIKeyboardType = .default) -> UITextField {

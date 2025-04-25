@@ -534,7 +534,6 @@ class NetworkServiceProvider {
     }
     
     // MARK: - Fetch Lost Pets
-    
     func fetchLostPets(page: Int = 1, limit: Int = 10, completion: @escaping (Result<APILostPetResponse, Error>) -> Void) {
         var urlComponents = URLComponents(string: "\(api)/api/v1/pets/lost")!
         urlComponents.queryItems = [
@@ -569,13 +568,45 @@ class NetworkServiceProvider {
             }
             
             do {
-                let decoder = JSONDecoder()
-                let result = try decoder.decode(APILostPetResponse.self, from: data)
-                DispatchQueue.main.async {
-                    completion(.success(result))
+                // First try decoding as a standard array of Pet objects
+                let pets = try JSONDecoder().decode([Pet].self, from: data)
+                
+                // Convert Pet objects to APILostPet objects
+                let apiPets = pets.map { pet -> APILostPet in
+                    let photoUrl = pet.photos.first?.photo_url
+                    
+                    return APILostPet(
+                        id: String(pet.id),
+                        name: pet.name,
+                        species: pet.species,
+                        breed: pet.breed,
+                        photo_url: photoUrl,
+                        status: pet.status,
+                        lost_date: pet.lost_date
+                    )
                 }
+                
+                // Create a response object with the converted pets and pagination info
+                let response = APILostPetResponse(
+                    items: apiPets,
+                    total: pets.count,
+                    page: page,
+                    limit: limit,
+                    pages: max(1, (pets.count + limit - 1) / limit)
+                )
+                print(response, "oiefnonieis")
+                DispatchQueue.main.async {
+                    completion(.success(response))
+                }
+                
             } catch {
                 print("Decoding error: \(error)")
+                
+                // If you want to see the raw JSON for debugging
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("Response data: \(jsonString)")
+                }
+                
                 DispatchQueue.main.async {
                     completion(.failure(NetworkError.decodingFailed(error)))
                 }
@@ -1212,5 +1243,122 @@ class NetworkServiceProvider {
                 completion(.failure(NetworkError.unknownError(error)))
             }
         }
+    }
+    
+    // Обновление метода searchPet в NetworkServiceProvider для включения координат
+    // Этот код нужно добавить в класс NetworkServiceProvider в файле NetworkService.swift
+
+    // MARK: - Search Pet API Requests
+
+    /// Поиск домашнего животного по фотографии и критериям
+    // Обновление метода searchPet в NetworkServiceProvider для включения координат
+    // Этот код нужно добавить в класс NetworkServiceProvider в файле NetworkService.swift
+
+    // MARK: - Search Pet API Requests
+
+    /// Поиск домашнего животного по фотографии и критериям
+    func searchPet(photo: UIImage, species: String, color: String, gender: String?, breed: String?, coordX: Double? = nil, coordY: Double? = nil, completion: @escaping (Result<PetSearchResponse, Error>) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/pets/search") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        // Создаем multipart/form-data запрос
+        var request = createAuthorizedRequest(url: url, method: "POST")
+        
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        
+        var body = Data()
+        
+        // Добавляем фото
+        if let imageData = photo.jpegData(compressionQuality: 0.7) {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+            body.append(imageData)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        
+        // Добавляем обязательные поля
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"species\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(species)\r\n".data(using: .utf8)!)
+        
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"color\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(color)\r\n".data(using: .utf8)!)
+        
+        // Добавляем опциональные поля
+        if let gender = gender, !gender.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"gender\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(gender)\r\n".data(using: .utf8)!)
+        }
+        
+        if let breed = breed, !breed.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"breed\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(breed)\r\n".data(using: .utf8)!)
+        }
+        
+        // Добавляем координаты, если они предоставлены
+        if let coordX = coordX {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"coordX\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(coordX)\r\n".data(using: .utf8)!)
+        }
+        
+        if let coordY = coordY {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"coordY\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(coordY)\r\n".data(using: .utf8)!)
+        }
+        
+        // Закрываем multipart форму
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        request.httpBody = body
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            // Обработка сетевой ошибки
+            if let error = error {
+                self.handleNetworkError(error, completion: completion)
+                return
+            }
+            
+            // Обработка HTTP ответа
+            if !self.handleHTTPResponse(response: response, completion: completion) {
+                return
+            }
+            
+            // Проверка наличия данных
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.noData))
+                }
+                return
+            }
+            
+            // Декодирование ответа
+            do {
+                let searchResponse = try JSONDecoder().decode(PetSearchResponse.self, from: data)
+                DispatchQueue.main.async {
+                    completion(.success(searchResponse))
+                }
+            } catch {
+                print("❌ JSON Decoding error: \(error)")
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("Response data: \(jsonString)")
+                }
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.decodingFailed(error)))
+                }
+            }
+        }
+        
+        task.resume()
     }
 }

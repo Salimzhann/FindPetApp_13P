@@ -331,8 +331,8 @@
 		19261CC72CD5160400848699 /* Main */ = {
 			isa = PBXGroup;
 			children = (
-				040907B72DB2B9A100862F6A /* Protocols */,
 				19213FD42CC4E4A7006D8BE1 /* MainView.swift */,
+				040907B72DB2B9A100862F6A /* Protocols */,
 				0450003F2D9C2FC1004EE34A /* SubModule */,
 				0450003C2D9C2879004EE34A /* Presenter */,
 				045000392D9C10C2004EE34A /* Model */,
@@ -609,6 +609,7 @@
 				DEVELOPMENT_TEAM = 94CHBXCXT8;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SDUPM/Info.plist;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to help find lost pets near you.\n";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -643,6 +644,7 @@
 				DEVELOPMENT_TEAM = 94CHBXCXT8;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SDUPM/Info.plist;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to help find lost pets near you.\n";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
