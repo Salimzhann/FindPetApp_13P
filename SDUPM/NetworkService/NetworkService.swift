@@ -1,6 +1,6 @@
 import Foundation
 import UIKit
-
+import CoreLocation
 /// Ошибки, которые могут возникнуть при сетевых запросах
 enum NetworkError: Error, LocalizedError {
     case invalidURL
@@ -834,7 +834,215 @@ class NetworkServiceProvider {
     
     /// Вход в систему
     // Обновите метод login в NetworkServiceProvider так, чтобы он возвращал данные в нужном формате:
+    // SDUPM/NetworkService/NetworkService.swift (Partial update - only the searchPet method)
+    // Path: SDUPM/NetworkService/NetworkService.swift (Add or update this method)
 
+    func reportFoundPet(
+        photo: UIImage,
+        species: String,
+        color: String,
+        gender: String?,
+        breed: String?,
+        coordinates: CLLocationCoordinate2D?,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        guard let url = URL(string: "\(api)/api/v1/pets/found") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        // Create multipart/form-data request
+        var request = createAuthorizedRequest(url: url, method: "POST")
+        
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        
+        var body = Data()
+        
+        // Add photo
+        if let imageData = photo.jpegData(compressionQuality: 0.7) {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+            body.append(imageData)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        
+        // Add required fields
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"species\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(species)\r\n".data(using: .utf8)!)
+        
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"color\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(color)\r\n".data(using: .utf8)!)
+        
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"status\"\r\n\r\n".data(using: .utf8)!)
+        body.append("found\r\n".data(using: .utf8)!)
+        
+        // Add optional fields
+        if let gender = gender, !gender.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"gender\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(gender)\r\n".data(using: .utf8)!)
+        }
+        
+        if let breed = breed, !breed.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"breed\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(breed)\r\n".data(using: .utf8)!)
+        }
+        
+        // Add coordinates if available
+        if let coordinates = coordinates {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"coordX\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(coordinates.longitude)\r\n".data(using: .utf8)!)
+            
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"coordY\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(coordinates.latitude)\r\n".data(using: .utf8)!)
+        }
+        
+        // Close the multipart form
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        request.httpBody = body
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.unknownError(error)))
+                }
+                return
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                }
+                return
+            }
+            
+            if (200...299).contains(httpResponse.statusCode) {
+                DispatchQueue.main.async {
+                    completion(.success(()))
+                }
+            } else {
+                DispatchQueue.main.async {
+                    let message = data != nil ? String(data: data!, encoding: .utf8) ?? "Unknown error" : "Unknown error"
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                }
+            }
+        }
+        
+        task.resume()
+    }
+    func searchPet(photo: UIImage, species: String, color: String, gender: String?, breed: String?, coordinates: CLLocationCoordinate2D?, completion: @escaping (Result<PetSearchResponse, Error>) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/pets/search") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        // Create multipart/form-data request
+        var request = createAuthorizedRequest(url: url, method: "POST")
+        
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        
+        var body = Data()
+        
+        // Add photo
+        if let imageData = photo.jpegData(compressionQuality: 0.7) {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+            body.append(imageData)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        
+        // Add required fields
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"species\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(species)\r\n".data(using: .utf8)!)
+        
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"color\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(color)\r\n".data(using: .utf8)!)
+        
+        // Add optional fields
+        if let gender = gender, !gender.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"gender\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(gender)\r\n".data(using: .utf8)!)
+        }
+        
+        if let breed = breed, !breed.isEmpty {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"breed\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(breed)\r\n".data(using: .utf8)!)
+        }
+        
+        // Add coordinates if available
+        if let coordinates = coordinates {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"coordX\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(coordinates.longitude)\r\n".data(using: .utf8)!)
+            
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"coordY\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(coordinates.latitude)\r\n".data(using: .utf8)!)
+        }
+        
+        // Close the multipart form
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        request.httpBody = body
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            // Handle network error
+            if let error = error {
+                self.handleNetworkError(error, completion: completion)
+                return
+            }
+            
+            // Handle HTTP response
+            if !self.handleHTTPResponse(response: response, completion: completion) {
+                return
+            }
+            
+            // Check for data
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.noData))
+                }
+                return
+            }
+            
+            // Decode response
+            do {
+                let searchResponse = try JSONDecoder().decode(PetSearchResponse.self, from: data)
+                DispatchQueue.main.async {
+                    completion(.success(searchResponse))
+                }
+            } catch {
+                print("❌ JSON Decoding error: \(error)")
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    print("Response data: \(jsonString)")
+                }
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.decodingFailed(error)))
+                }
+            }
+        }
+        
+        task.resume()
+    }
     /// Вход в систему
     func login(email: String, password: String, completion: @escaping (Result<String, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/auth/login") else {

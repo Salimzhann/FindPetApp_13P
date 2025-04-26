@@ -1,28 +1,55 @@
-//
-//  FindPetViewController.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 01.04.2025.
+// SDUPM/Modules/FindPet/FindPetViewController.swift
 
 import UIKit
 import SnapKit
 import PhotosUI
 import CoreLocation
+import ObjectiveC
 
 protocol IFindPetView: AnyObject {
     func showLoading()
     func hideLoading()
     func navigateToSearchResults(response: PetSearchResponse)
     func showError(message: String)
+    func showSuccess(message: String)
+}
+
+class SearchPhotoCell: UICollectionViewCell {
+    private let imageView = UIImageView()
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        
+        imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 8
+        
+        contentView.addSubview(imageView)
+        imageView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    func configure(with image: UIImage) {
+        imageView.image = image
+    }
 }
 
 class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, UINavigationControllerDelegate, IFindPetView, CLLocationManagerDelegate {
     
-    // Изменено с private на fileprivate для доступа из расширений
+    // Changed from private to fileprivate for access from extensions
     fileprivate var selectedImages: [UIImage] = []
-    private let presenter = FindPetPresenter()
+    private let presenter = FindPetSearchPresenter()
     private let locationManager = CLLocationManager()
     private var currentLocation: CLLocationCoordinate2D?
+    
+    // Store completion handlers
+    private var locationPermissionCompletion: ((Bool) -> Void)?
+    private var locationCompletionHandler: ((CLLocationCoordinate2D?) -> Void)?
     
     // MARK: - UI Components
     
@@ -166,34 +193,18 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
         photoCollectionView.register(SearchPhotoCell.self, forCellWithReuseIdentifier: "SearchPhotoCell")
     }
     
-    // MARK: - Actions
+    // MARK: - Location Methods
     
     private func requestLocationPermissionIfNeeded(completion: @escaping (Bool) -> Void) {
         let authStatus = CLLocationManager.authorizationStatus()
         
         switch authStatus {
         case .notDetermined:
-            // Set a temporary delegate to handle the authorization response
-            class AuthDelegate: NSObject, CLLocationManagerDelegate {
-                var completion: ((Bool) -> Void)?
-                
-                func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-                    switch status {
-                    case .authorizedWhenInUse, .authorizedAlways:
-                        completion?(true)
-                    default:
-                        completion?(false)
-                    }
-                }
-            }
+            // Store the completion handler
+            locationPermissionCompletion = completion
             
-            let tempDelegate = AuthDelegate()
-            tempDelegate.completion = completion
-            
-            // Store a reference to prevent deallocation
-            objc_setAssociatedObject(self, "tempAuthDelegate", tempDelegate, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            
-            locationManager.delegate = tempDelegate
+            // Set self as delegate to receive authorization changes
+            locationManager.delegate = self
             locationManager.requestWhenInUseAuthorization()
             
         case .restricted, .denied:
@@ -205,61 +216,73 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
         }
     }
     
+    // CLLocationManagerDelegate method for handling authorization changes
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        switch status {
+        case .authorizedWhenInUse, .authorizedAlways:
+            locationPermissionCompletion?(true)
+        case .denied, .restricted:
+            locationPermissionCompletion?(false)
+        case .notDetermined:
+            // Still waiting for user decision
+            break
+        @unknown default:
+            locationPermissionCompletion?(false)
+        }
+        
+        // Clear the completion handler after it's called
+        locationPermissionCompletion = nil
+    }
+    
     private func getLocation(completion: @escaping (CLLocationCoordinate2D?) -> Void) {
+        // Store the completion handler
+        locationCompletionHandler = completion
+        
         // Clear any previous location
         currentLocation = nil
         
-        // Set a timeout for location fetching (8 seconds)
-        let timeoutTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: false) { [weak self] _ in
-            // If we still don't have a location after timeout
+        // Set timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) { [weak self] in
             if self?.currentLocation == nil {
-                completion(nil)
+                self?.locationCompletionHandler?(nil)
+                self?.locationCompletionHandler = nil
                 self?.locationManager.stopUpdatingLocation()
             }
         }
         
-        // Override the location delegate method temporarily
-        class LocationDelegate: NSObject, CLLocationManagerDelegate {
-            var completion: ((CLLocationCoordinate2D?) -> Void)?
-            var timer: Timer?
-            
-            func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-                guard let location = locations.last else { return }
-                
-                // Call completion with success
-                completion?(location.coordinate)
-                
-                // Cancel the timeout timer
-                timer?.invalidate()
-                
-                // Stop further updates
-                manager.stopUpdatingLocation()
-            }
-            
-            func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-                // Call completion with failure
-                completion?(nil)
-                
-                // Cancel the timeout timer
-                timer?.invalidate()
-            }
-        }
-        
-        // Create and store the temporary delegate
-        let tempDelegate = LocationDelegate()
-        tempDelegate.completion = completion
-        tempDelegate.timer = timeoutTimer
-        
-        // Store a reference to prevent deallocation
-        objc_setAssociatedObject(self, "tempLocationDelegate", tempDelegate, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-        
-        // Set the delegate and start
-        locationManager.delegate = tempDelegate
+        // Start location updates
+        locationManager.delegate = self
         locationManager.startUpdatingLocation()
     }
     
+    // CLLocationManagerDelegate methods
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if let location = locations.last {
+            currentLocation = location.coordinate
+            
+            // Call the completion handler with the location
+            locationCompletionHandler?(currentLocation)
+            locationCompletionHandler = nil
+            
+            // Stop updates
+            locationManager.stopUpdatingLocation()
+        }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("Failed to get location: \(error.localizedDescription)")
+        
+        // Call the completion handler with nil
+        locationCompletionHandler?(nil)
+        locationCompletionHandler = nil
+        
+        // Stop updates
+        locationManager.stopUpdatingLocation()
+    }
+    
+    // MARK: - Actions
+    
     @objc private func uploadPhotoTapped() {
-        // Standard UIImagePicker
         if #available(iOS 14, *) {
             // Use PHPicker for iOS 14 and up
             var config = PHPickerConfiguration()
@@ -289,17 +312,16 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
         let gender = genderTextField.text?.isEmpty == true ? nil : genderTextField.text
         let breed = breedTextField.text?.isEmpty == true ? nil : breedTextField.text
         
-        // Ask user about search purpose
-        let alert = UIAlertController(
+        // First, ask about search purpose
+        let actionSheet = UIAlertController(
             title: "Search Purpose",
-            message: "Are you looking for your own pet or to find a pet's owner?",
-            preferredStyle: .alert
+            message: "What would you like to do?",
+            preferredStyle: .actionSheet
         )
         
-        alert.addAction(UIAlertAction(title: "Find My Pet", style: .default) { [weak self] _ in
+        actionSheet.addAction(UIAlertAction(title: "Find My Pet", style: .default) { [weak self] _ in
             guard let self = self else { return }
             
-            // Show location confirmation and request
             self.showLocationConfirmationAlert(
                 photo: self.selectedImages.first!,
                 species: species,
@@ -310,16 +332,104 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
             )
         })
         
-        alert.addAction(UIAlertAction(title: "Find Pet Owner", style: .default) { [weak self] _ in
+        actionSheet.addAction(UIAlertAction(title: "Find Pet Owner", style: .default) { [weak self] _ in
             guard let self = self else { return }
             
-            // Show location confirmation and request
             self.showLocationConfirmationAlert(
                 photo: self.selectedImages.first!,
                 species: species,
                 color: color,
                 gender: gender,
+                breed: breed,
+                isFindingOwner: true
+            )
+        })
+        
+        // Add new option to report a found pet
+        actionSheet.addAction(UIAlertAction(title: "Report Found Pet", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Ask for location to add found pet
+            self.askLocationForFoundPet(
+                photo: self.selectedImages.first!,
+                species: species,
+                color: color,
+                gender: gender,
                 breed: breed
+            )
+        })
+        
+        actionSheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        present(actionSheet, animated: true)
+    }
+    
+    private func askLocationForFoundPet(photo: UIImage, species: String, color: String, gender: String?, breed: String?) {
+        let alert = UIAlertController(
+            title: "Add Pet to Found List",
+            message: "We need your current location to help owners find where their pet was last seen. Do you want to share your location?",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Yes, Share Location", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Request location permission
+            self.requestLocationPermissionIfNeeded { hasPermission in
+                if hasPermission {
+                    // Show loading during location fetch
+                    DispatchQueue.main.async {
+                        self.view.isUserInteractionEnabled = false
+                        self.activityIndicator.startAnimating()
+                    }
+                    
+                    // Get current location
+                    self.getLocation { coordinates in
+                        DispatchQueue.main.async {
+                            self.view.isUserInteractionEnabled = true
+                            self.activityIndicator.stopAnimating()
+                            
+                            // Report found pet with or without location
+                            self.presenter.reportFoundPet(
+                                photo: photo,
+                                species: species.lowercased(),
+                                color: color,
+                                gender: gender,
+                                breed: breed,
+                                location: coordinates
+                            )
+                        }
+                    }
+                } else {
+                    // No permission - show alert
+                    DispatchQueue.main.async {
+                        self.showErrorAlert(message: "Location permission denied. The pet will be added without location information.")
+                        
+                        // Report found pet without location
+                        self.presenter.reportFoundPet(
+                            photo: photo,
+                            species: species.lowercased(),
+                            color: color,
+                            gender: gender,
+                            breed: breed,
+                            location: nil
+                        )
+                    }
+                }
+            }
+        })
+        
+        alert.addAction(UIAlertAction(title: "No, Continue Without Location", style: .cancel) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Report found pet without location
+            self.presenter.reportFoundPet(
+                photo: photo,
+                species: species.lowercased(),
+                color: color,
+                gender: gender,
+                breed: breed,
+                location: nil
             )
         })
         
@@ -355,15 +465,13 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
                             
                             if let coordinates = coordinates {
                                 // Proceed with search using location
-                                print(coordinates, "uosefosif")
-                                self.performSearch(
+                                self.presenter.searchPet(
                                     photo: photo,
                                     species: species.lowercased(),
                                     color: color,
                                     gender: gender,
                                     breed: breed,
-                                    isFindingOwner: isFindingOwner,
-                                    coordinates: coordinates
+                                    isFindingOwner: isFindingOwner
                                 )
                             } else {
                                 // Show error - couldn't get location
@@ -391,14 +499,13 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
             guard let self = self else { return }
             
             // Proceed without location
-            self.performSearch(
+            self.presenter.searchPet(
                 photo: photo,
                 species: species.lowercased(),
                 color: color,
                 gender: gender,
                 breed: breed,
-                isFindingOwner: isFindingOwner,
-                coordinates: nil
+                isFindingOwner: isFindingOwner
             )
         })
         
@@ -422,30 +529,17 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
             guard let self = self else { return }
             
             // Proceed without location
-            self.performSearch(
+            self.presenter.searchPet(
                 photo: photo,
                 species: species.lowercased(),
                 color: color,
                 gender: gender,
                 breed: breed,
-                isFindingOwner: isFindingOwner,
-                coordinates: nil
+                isFindingOwner: isFindingOwner
             )
         })
         
         present(alert, animated: true)
-    }
-    
-    private func performSearch(photo: UIImage, species: String, color: String, gender: String?, breed: String?, isFindingOwner: Bool, coordinates: CLLocationCoordinate2D?) {
-        presenter.searchPet(
-            photo: photo,
-            species: species,
-            color: color,
-            gender: gender,
-            breed: breed,
-            isFindingOwner: isFindingOwner,
-            coordinates: coordinates
-        )
     }
     
     // MARK: - IFindPetView Implementation
@@ -455,16 +549,6 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
             self.activityIndicator.startAnimating()
             self.searchButton.isEnabled = false
         }
-    }
-    
-    private func hideKeyboardWhenTappedAround() {
-        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
-        tap.cancelsTouchesInView = false
-        view.addGestureRecognizer(tap)
-    }
-
-    @objc private func dismissKeyboard() {
-        view.endEditing(true)
     }
     
     func hideLoading() {
@@ -487,6 +571,14 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
         }
     }
     
+    func showSuccess(message: String) {
+        DispatchQueue.main.async {
+            let alert = UIAlertController(title: "Success", message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(alert, animated: true)
+        }
+    }
+    
     // MARK: - UIImagePickerControllerDelegate
     
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
@@ -498,6 +590,16 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
     }
     
     // MARK: - Helper Methods
+    
+    private func hideKeyboardWhenTappedAround() {
+        let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        tap.cancelsTouchesInView = false
+        view.addGestureRecognizer(tap)
+    }
+
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
     
     private func showErrorAlert(message: String) {
         let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
@@ -516,33 +618,8 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
     }
 }
 
-// MARK: - PHPickerViewControllerDelegate
-
-@available(iOS 14, *)
-extension FindPetViewController: PHPickerViewControllerDelegate {
-    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-        dismiss(animated: true)
-        
-        guard let result = results.first else { return }
-        
-        result.itemProvider.loadObject(ofClass: UIImage.self) { [weak self] object, error in
-            if let image = object as? UIImage {
-                DispatchQueue.main.async {
-                    self?.selectedImages = [image]
-                    self?.photoCollectionView.reloadData()
-                }
-            } else if let error = error {
-                DispatchQueue.main.async {
-                    self?.showError(message: "Failed to load image: \(error.localizedDescription)")
-                }
-            }
-        }
-    }
-}
-
-// MARK: - UICollectionView DataSource & Delegate
-
-extension FindPetViewController: UICollectionViewDataSource, UICollectionViewDelegate {
+// MARK: - UICollectionView Delegate & DataSource
+extension FindPetViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return selectedImages.count
     }
@@ -554,29 +631,25 @@ extension FindPetViewController: UICollectionViewDataSource, UICollectionViewDel
     }
 }
 
-// MARK: - Search Photo Cell
-
-class SearchPhotoCell: UICollectionViewCell {
-    private let imageView = UIImageView()
-    
-    override init(frame: CGRect) {
-        super.init(frame: frame)
+// MARK: - PHPickerViewControllerDelegate
+@available(iOS 14, *)
+extension FindPetViewController: PHPickerViewControllerDelegate {
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        dismiss(animated: true)
         
-        imageView.contentMode = .scaleAspectFill
-        imageView.clipsToBounds = true
-        imageView.layer.cornerRadius = 8
+        guard let result = results.first else { return }
         
-        contentView.addSubview(imageView)
-        imageView.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
+        result.itemProvider.loadObject(ofClass: UIImage.self) { [weak self] (object, error) in
+            if let image = object as? UIImage {
+                DispatchQueue.main.async {
+                    self?.selectedImages = [image]
+                    self?.photoCollectionView.reloadData()
+                }
+            } else if let error = error {
+                DispatchQueue.main.async {
+                    self?.showError(message: "Failed to load image: \(error.localizedDescription)")
+                }
+            }
         }
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-    func configure(with image: UIImage) {
-        imageView.image = image
     }
 }
