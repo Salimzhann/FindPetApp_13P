@@ -498,19 +498,10 @@ extension MyPetViewController: UICollectionViewDataSource, UICollectionViewDeleg
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        // Открываем детальный просмотр для ЛЮБОГО питомца
         let pet = filteredPets[indexPath.row]
-        
-        // Для найденных питомцев открываем экран деталей с отключенным редактированием
-        if pet.status == "found" {
-            let editVC = EditPetViewController(pet: pet)
-            editVC.delegate = self
-            editVC.disableEditing = true
-            present(editVC, animated: true)
-        } else {
-            // Для обычных питомцев открываем детальный просмотр
-            let vc = MyPetDetailViewController(model: pet)
-            self.navigationController?.pushViewController(vc, animated: true)
-        }
+        let vc = MyPetDetailViewController(model: pet)
+        self.navigationController?.pushViewController(vc, animated: true)
     }
     
     // Метод для контекстного меню (долгое нажатие)
