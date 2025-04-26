@@ -8,7 +8,10 @@ class EditPetViewController: UIViewController, UITextViewDelegate {
     private var pet: MyPetModel
     private let presenter = EditPetViewPresenter()
     
-    weak var delegate: EditPetViewDelegate?
+    weak var delegate: EditPetViewControllerDelegate?
+    
+    // Флаг для блокировки редактирования (для найденных питомцев)
+    var disableEditing: Bool = false
     
     // MARK: - UI Components
     
@@ -115,6 +118,11 @@ class EditPetViewController: UIViewController, UITextViewDelegate {
         fillFormWithPetData()
         setupPresenter()
         hideKeyboardWhenTappedAround()
+        
+        // Если питомец имеет статус "found", блокируем возможность редактирования
+        if disableEditing || pet.status == "found" {
+            disableEditingControls()
+        }
     }
     
     // MARK: - Setup Methods
@@ -275,6 +283,10 @@ class EditPetViewController: UIViewController, UITextViewDelegate {
             statusSegmentedControl.selectedSegmentIndex = 0
         case "lost":
             statusSegmentedControl.selectedSegmentIndex = 1
+        case "found":
+            // Если статус "found", сделаем специальную настройку
+            statusLabel.text = "Status: Found"
+            statusSegmentedControl.isHidden = true
         default:
             statusSegmentedControl.selectedSegmentIndex = 0
         }
@@ -288,6 +300,33 @@ class EditPetViewController: UIViewController, UITextViewDelegate {
     
     @objc private func dismissKeyboard() {
         view.endEditing(true)
+    }
+    
+    // Метод для отключения редактирования (для найденных питомцев)
+    private func disableEditingControls() {
+        // Изменим заголовок на "Pet Details" вместо "Edit Pet"
+        titleLabel.text = "Pet Details"
+        
+        // Деактивируем все поля ввода
+        nameField.isEnabled = false
+        speciesField.isEnabled = false
+        breedField.isEnabled = false
+        ageField.isEnabled = false
+        colorField.isEnabled = false
+        genderField.isEnabled = false
+        distinctiveFeaturesTextView.isEditable = false
+        statusSegmentedControl.isEnabled = false
+        
+        // Скрываем кнопку обновления
+        updateButton.isHidden = true
+        
+        // Перемещаем кнопку удаления вверх, так как кнопка обновления скрыта
+        deleteButton.snp.remakeConstraints { make in
+            make.top.equalTo(statusSegmentedControl.snp.bottom).offset(32)
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(50)
+            make.bottom.equalToSuperview().inset(32)
+        }
     }
     
     // MARK: - UITextViewDelegate
@@ -331,10 +370,8 @@ class EditPetViewController: UIViewController, UITextViewDelegate {
             status = "home"
         case 1:
             status = "lost"
-        case 2:
-            status = "found"
         default:
-            status = "home"
+            status = pet.status // Используем текущий статус, если что-то пошло не так
         }
         
         // Показать состояние загрузки
@@ -437,4 +474,11 @@ extension EditPetViewController: EditPetViewDelegate {
         
         showAlert(title: "Error", message: message)
     }
+}
+
+// MARK: - EditPetViewDelegate Protocol (for Presenter)
+protocol EditPetViewDelegate: AnyObject {
+    func petUpdated(pet: MyPetModel)
+    func petDeleted(petId: Int)
+    func showError(message: String)
 }

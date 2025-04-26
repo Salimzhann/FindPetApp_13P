@@ -7,17 +7,42 @@ class MainPresenter: MainPresenterProtocol {
     
     // Сохраняем текущие данные животных
     private var currentPets: [Pet] = []
+    // Флаг для отслеживания текущего режима просмотра (Lost или Found)
+    private var isFoundMode = false
     
     func didTapDetail(id: Int) {
         print("MainPresenter: Opening pet details for id \(id)")
         
-        // Use the new initializer name to avoid ambiguity
-        let vc = LostPetDetailViewController(withPetId: id)
-        vc.hidesBottomBarWhenPushed = true
-        view?.navigationController?.pushViewController(vc, animated: true)
+        // Создаем и показываем контроллер с детальной информацией в зависимости от текущего режима
+        if isFoundMode {
+            // Для режима Found используем API запрос для получения Found Pet
+            provider.getFoundPetDetails(petId: id) { [weak self] result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let pet):
+                        print("MainPresenter: Successfully fetched found pet details for id \(id)")
+                        // Используем LostPetDetailViewController для отображения найденного питомца
+                        let vc = LostPetDetailViewController(withPet: pet)
+                        vc.hidesBottomBarWhenPushed = true
+                        self?.view?.navigationController?.pushViewController(vc, animated: true)
+                        
+                    case .failure(let error):
+                        print("MainPresenter: Failed to fetch found pet details: \(error.localizedDescription)")
+                        self?.view?.showError(message: "Failed to load pet details: \(error.localizedDescription)")
+                    }
+                }
+            }
+        } else {
+            // Для режима Lost используем уже существующую логику
+            let vc = LostPetDetailViewController(withPetId: id)
+            vc.hidesBottomBarWhenPushed = true
+            view?.navigationController?.pushViewController(vc, animated: true)
+        }
     }
+    
     func fetchLostPets() {
         view?.showLoading()
+        isFoundMode = false
         
         provider.fetchLostPets { [weak self] result in
             DispatchQueue.main.async {
@@ -25,7 +50,7 @@ class MainPresenter: MainPresenterProtocol {
                 
                 switch result {
                 case .success(let response):
-                    // Просто сохраняем полученные данные
+                    // Сохраняем полученные данные
                     self?.currentPets = response.items
                     
                     // Преобразуем Pet в LostPet только для отображения в UI
@@ -41,6 +66,7 @@ class MainPresenter: MainPresenterProtocol {
     
     func fetchFoundPets() {
         view?.showLoading()
+        isFoundMode = true
         
         provider.fetchFoundPets { [weak self] pets, error in
             DispatchQueue.main.async {

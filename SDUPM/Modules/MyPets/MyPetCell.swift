@@ -79,7 +79,16 @@ class MyPetCell: UICollectionViewCell {
         return button
     }()
     
+    private let deleteButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setImage(UIImage(systemName: "trash.circle.fill"), for: .normal)
+        button.tintColor = .systemRed
+        button.isHidden = true  // По умолчанию скрыта
+        return button
+    }()
+    
     var onEditTapped: (() -> Void)?
+    var onDeleteTapped: (() -> Void)?
     
     // MARK: - Initialization
     
@@ -104,6 +113,7 @@ class MyPetCell: UICollectionViewCell {
         containerView.addSubview(genderLabel)
         containerView.addSubview(statusBadge)
         containerView.addSubview(editButton)
+        containerView.addSubview(deleteButton)
         statusBadge.addSubview(statusLabel)
         
         containerView.snp.makeConstraints { make in
@@ -122,10 +132,16 @@ class MyPetCell: UICollectionViewCell {
             make.width.height.equalTo(30)
         }
         
+        deleteButton.snp.makeConstraints { make in
+            make.top.equalToSuperview().inset(12)
+            make.trailing.equalToSuperview().inset(12)
+            make.width.height.equalTo(30)
+        }
+        
         nameLabel.snp.makeConstraints { make in
             make.top.equalTo(petImageView).offset(2)
             make.leading.equalTo(petImageView.snp.trailing).offset(12)
-            make.trailing.equalTo(editButton.snp.leading).offset(-12)
+            make.trailing.equalTo(editButton.snp.leading).offset(-8)
         }
         
         statusBadge.snp.makeConstraints { make in
@@ -160,10 +176,27 @@ class MyPetCell: UICollectionViewCell {
     
     private func setupActions() {
         editButton.addTarget(self, action: #selector(editButtonTapped), for: .touchUpInside)
+        deleteButton.addTarget(self, action: #selector(deleteButtonTapped), for: .touchUpInside)
     }
     
     @objc private func editButtonTapped() {
         onEditTapped?()
+    }
+    
+    @objc private func deleteButtonTapped() {
+        onDeleteTapped?()
+    }
+    
+    // MARK: - Public Methods
+    
+    // Метод для показа или скрытия кнопки редактирования
+    func showEditButton(_ show: Bool) {
+        editButton.isHidden = !show
+    }
+    
+    // Метод для показа или скрытия кнопки удаления
+    func showDeleteButton(_ show: Bool) {
+        deleteButton.isHidden = !show
     }
     
     // MARK: - Configuration
@@ -192,5 +225,7 @@ class MyPetCell: UICollectionViewCell {
         speciesLabel.text = nil
         breedLabel.text = nil
         genderLabel.text = nil
+        editButton.isHidden = false
+        deleteButton.isHidden = true
     }
 }

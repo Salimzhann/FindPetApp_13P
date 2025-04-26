@@ -20,18 +20,36 @@ class MyPetViewController: UIViewController, IMyPetViewController {
         didSet {
             // Убедимся, что обновляем UI в основном потоке
             if Thread.isMainThread {
-                collectionView.reloadData()
-                updateEmptyState()
+                filterPetsAndUpdateUI()
             } else {
                 DispatchQueue.main.async { [weak self] in
-                    self?.collectionView.reloadData()
-                    self?.updateEmptyState()
+                    self?.filterPetsAndUpdateUI()
                 }
             }
         }
     }
     
+    // Фильтрованный массив питомцев для отображения
+    private var filteredPets: [MyPetModel] = []
+    
+    // Текущий режим отображения
+    private enum DisplayMode {
+        case myPets
+        case foundPets
+    }
+    
+    private var currentDisplayMode: DisplayMode = .myPets
+    
     // MARK: - UI Components
+    
+    private let segmentedControl: UISegmentedControl = {
+        let control = UISegmentedControl(items: ["My Pets", "Found Pets"])
+        control.selectedSegmentIndex = 0
+        control.selectedSegmentTintColor = .systemGreen
+        control.setTitleTextAttributes([.foregroundColor: UIColor.white], for: .selected)
+        control.setTitleTextAttributes([.foregroundColor: UIColor.black], for: .normal)
+        return control
+    }()
     
     private lazy var emptyStateView: UIView = {
         let view = UIView()
@@ -149,6 +167,14 @@ class MyPetViewController: UIViewController, IMyPetViewController {
         view.backgroundColor = .systemBackground
         title = "My Pets"
         
+        // Добавляем сегментированный контрол
+        view.addSubview(segmentedControl)
+        segmentedControl.snp.makeConstraints { make in
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(16)
+            make.leading.trailing.equalToSuperview().inset(16)
+            make.height.equalTo(40)
+        }
+        
         // Add empty state view
         view.addSubview(emptyStateView)
         emptyStateView.addSubview(emptyImageView)
@@ -182,7 +208,7 @@ class MyPetViewController: UIViewController, IMyPetViewController {
         // Add collection view
         view.addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
-            make.top.equalTo(view.safeAreaLayoutGuide)
+            make.top.equalTo(segmentedControl.snp.bottom).offset(16)
             make.leading.trailing.equalToSuperview().inset(16)
             make.bottom.equalTo(view.safeAreaLayoutGuide).inset(80)
         }
@@ -225,18 +251,38 @@ class MyPetViewController: UIViewController, IMyPetViewController {
     private func setupActions() {
         addButton.addTarget(self, action: #selector(addPetTapped), for: .touchUpInside)
         refreshButton.addTarget(self, action: #selector(refreshTapped), for: .touchUpInside)
+        segmentedControl.addTarget(self, action: #selector(segmentChanged), for: .valueChanged)
+    }
+    
+    // Метод для фильтрации питомцев в зависимости от выбранного режима
+    private func filterPetsAndUpdateUI() {
+        switch currentDisplayMode {
+        case .myPets:
+            // Отображаем все питомцы, кроме тех, у которых статус "found"
+            filteredPets = myPetsArray.filter { $0.status != "found" }
+            emptyDescriptionLabel.text = "Add your first pet by tapping the button below"
+            addButton.isHidden = false
+        case .foundPets:
+            // Отображаем только питомцы со статусом "found"
+            filteredPets = myPetsArray.filter { $0.status == "found" }
+            emptyDescriptionLabel.text = "No found pets to display"
+            addButton.isHidden = true
+        }
+        
+        updateEmptyState()
+        collectionView.reloadData()
     }
     
     private func updateEmptyState() {
         // Thread-safe check for UI updates
         if Thread.isMainThread {
-            emptyStateView.isHidden = !myPetsArray.isEmpty
-            collectionView.isHidden = myPetsArray.isEmpty
+            emptyStateView.isHidden = !filteredPets.isEmpty
+            collectionView.isHidden = filteredPets.isEmpty
         } else {
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
-                self.emptyStateView.isHidden = !self.myPetsArray.isEmpty
-                self.collectionView.isHidden = self.myPetsArray.isEmpty
+                self.emptyStateView.isHidden = !self.filteredPets.isEmpty
+                self.collectionView.isHidden = self.filteredPets.isEmpty
             }
         }
     }
@@ -303,12 +349,60 @@ class MyPetViewController: UIViewController, IMyPetViewController {
         }
     }
     
+    @objc private func segmentChanged(_ sender: UISegmentedControl) {
+        currentDisplayMode = sender.selectedSegmentIndex == 0 ? .myPets : .foundPets
+        filterPetsAndUpdateUI()
+    }
+    
     // MARK: - Show Edit View
     
     private func showEditPetView(for pet: MyPetModel) {
         let editVC = EditPetViewController(pet: pet)
         editVC.delegate = self
+        
+        // Если питомец имеет статус "found", блокируем возможность редактирования
+        if pet.status == "found" {
+            editVC.disableEditing = true
+        }
+        
         present(editVC, animated: true)
+    }
+    
+    // MARK: - Confirm and Delete Pet
+    
+    private func confirmAndDeletePet(_ pet: MyPetModel) {
+        let alert = UIAlertController(
+            title: "Delete Pet",
+            message: "Are you sure you want to delete \(pet.name)?",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            guard let self = self else { return }
+            
+            self.showLoading()
+            self.editPresenter.deletePet(petId: pet.id) { result in
+                DispatchQueue.main.async {
+                    self.hideLoading()
+                    
+                    switch result {
+                    case .success:
+                        // Удаляем питомца из массива
+                        if let index = self.myPetsArray.firstIndex(where: { $0.id == pet.id }) {
+                            self.myPetsArray.remove(at: index)
+                            // Показываем уведомление об успешном удалении
+                            self.showSuccessToast(message: "Pet successfully deleted")
+                        }
+                    case .failure(let error):
+                        self.showError(message: "Failed to delete pet: \(error.localizedDescription)")
+                    }
+                }
+            }
+        })
+        
+        present(alert, animated: true)
     }
     
     // MARK: - Status Update Action
@@ -322,7 +416,8 @@ class MyPetViewController: UIViewController, IMyPetViewController {
         
         let statusOptions: [(title: String, value: String)] = [
             ("At Home", "home"),
-            ("Lost", "lost")
+            ("Lost", "lost"),
+            ("Found", "found")
         ]
         
         for option in statusOptions {
@@ -354,8 +449,7 @@ class MyPetViewController: UIViewController, IMyPetViewController {
                     // Обновляем питомца в массиве
                     if let index = self.myPetsArray.firstIndex(where: { $0.id == pet.id }) {
                         self.myPetsArray[index] = updatedPet
-                        // Обновляем только конкретную ячейку вместо всей коллекции
-                        self.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
+                        // После обновления, фильтрация будет применена автоматически через didSet
                     }
                     
                 case .failure(let error):
@@ -370,21 +464,29 @@ class MyPetViewController: UIViewController, IMyPetViewController {
 
 extension MyPetViewController: UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return myPetsArray.count
+        return filteredPets.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: MyPetCell.identifier, for: indexPath) as! MyPetCell
-        cell.configure(with: myPetsArray[indexPath.row])
+        let pet = filteredPets[indexPath.row]
+        cell.configure(with: pet)
         
-        // Добавляем действие для кнопки редактирования
-        cell.onEditTapped = { [weak self] in
-            self?.showEditPetView(for: self?.myPetsArray[indexPath.row] ?? MyPetModel(
-                id: 0, name: "", species: "", breed: "", age: "",
-                color: "", // Добавьте этот параметр
-                images: [], status: "", description: "", gender: "",
-                photoURLs: [], lastSeenLocation: nil, lostDate: nil
-            ))
+        // Настраиваем действия для кнопок в зависимости от статуса
+        if pet.status == "found" {
+            // Для найденных питомцев показываем кнопку удаления
+            cell.showEditButton(false)
+            cell.showDeleteButton(true)
+            cell.onDeleteTapped = { [weak self] in
+                self?.confirmAndDeletePet(pet)
+            }
+        } else {
+            // Для обычных питомцев показываем кнопку редактирования
+            cell.showEditButton(true)
+            cell.showDeleteButton(false)
+            cell.onEditTapped = { [weak self] in
+                self?.showEditPetView(for: pet)
+            }
         }
         
         return cell
@@ -396,16 +498,58 @@ extension MyPetViewController: UICollectionViewDataSource, UICollectionViewDeleg
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let vc = MyPetDetailViewController(model: myPetsArray[indexPath.row])
-        self.navigationController?.pushViewController(vc, animated: true)
+        let pet = filteredPets[indexPath.row]
+        
+        // Для найденных питомцев открываем экран деталей с отключенным редактированием
+        if pet.status == "found" {
+            let editVC = EditPetViewController(pet: pet)
+            editVC.delegate = self
+            editVC.disableEditing = true
+            present(editVC, animated: true)
+        } else {
+            // Для обычных питомцев открываем детальный просмотр
+            let vc = MyPetDetailViewController(model: pet)
+            self.navigationController?.pushViewController(vc, animated: true)
+        }
+    }
+    
+    // Метод для контекстного меню (долгое нажатие)
+    func collectionView(_ collectionView: UICollectionView, contextMenuConfigurationForItemAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
+        let pet = filteredPets[indexPath.row]
+        
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { _ in
+            var actions: [UIAction] = []
+            
+            // Для Found питомцев только удаление
+            if pet.status == "found" {
+                let deleteAction = UIAction(title: "Delete", image: UIImage(systemName: "trash"), attributes: .destructive) { [weak self] _ in
+                    self?.confirmAndDeletePet(pet)
+                }
+                actions.append(deleteAction)
+            } else {
+                // Для обычных питомцев редактирование и удаление
+                let editAction = UIAction(title: "Edit", image: UIImage(systemName: "pencil")) { [weak self] _ in
+                    self?.showEditPetView(for: pet)
+                }
+                
+                let statusAction = UIAction(title: "Change Status", image: UIImage(systemName: "arrow.triangle.2.circlepath")) { [weak self] _ in
+                    self?.showStatusUpdateOptions(for: pet)
+                }
+                
+                let deleteAction = UIAction(title: "Delete", image: UIImage(systemName: "trash"), attributes: .destructive) { [weak self] _ in
+                    self?.confirmAndDeletePet(pet)
+                }
+                
+                actions.append(contentsOf: [editAction, statusAction, deleteAction])
+            }
+            
+            return UIMenu(title: "", children: actions)
+        }
     }
 }
 
-// Путь: SDUPM/Modules/MyPets/MyPetViewController.swift
-// Путь: SDUPM/Modules/MyPets/MyPetViewController.swift
-
-// MARK: - EditPetViewDelegate
-extension MyPetViewController: EditPetViewDelegate {
+// MARK: - EditPetViewControllerDelegate
+extension MyPetViewController: EditPetViewControllerDelegate {
     func petUpdated(pet: MyPetModel) {
         // После обновления питомца просто перезагружаем все данные
         presenter.fetchUserPets()
@@ -453,4 +597,10 @@ extension MyPetViewController: EditPetViewDelegate {
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
+}
+
+// MARK: - Protocol для делегата EditPetViewController
+protocol EditPetViewControllerDelegate: AnyObject {
+    func petUpdated(pet: MyPetModel)
+    func petDeleted(petId: Int)
 }

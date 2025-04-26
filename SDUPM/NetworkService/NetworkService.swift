@@ -972,6 +972,69 @@ class NetworkServiceProvider {
         
         task.resume()
     }
+    
+    func getFoundPetDetails(petId: Int, completion: @escaping (Result<Pet, Error>) -> Void) {
+           guard let url = URL(string: "\(api)/api/v1/pets/found/\(petId)") else {
+               DispatchQueue.main.async {
+                   completion(.failure(NetworkError.invalidURL))
+               }
+               return
+           }
+           
+           let request = createAuthorizedRequest(url: url, method: "GET")
+           
+           let task = URLSession.shared.dataTask(with: request) { data, response, error in
+               if let error = error {
+                   DispatchQueue.main.async {
+                       completion(.failure(NetworkError.unknownError(error)))
+                   }
+                   return
+               }
+               
+               guard let httpResponse = response as? HTTPURLResponse else {
+                   DispatchQueue.main.async {
+                       completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                   }
+                   return
+               }
+               
+               guard (200...299).contains(httpResponse.statusCode) else {
+                   DispatchQueue.main.async {
+                       completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                   }
+                   return
+               }
+               
+               guard let data = data else {
+                   DispatchQueue.main.async {
+                       completion(.failure(NetworkError.noData))
+                   }
+                   return
+               }
+               
+               do {
+                   let decoder = JSONDecoder()
+                   let pet = try decoder.decode(Pet.self, from: data)
+                   DispatchQueue.main.async {
+                       completion(.success(pet))
+                   }
+               } catch {
+                   print("Decoding error: \(error)")
+                   
+                   // Вывод полученных данных для отладки
+                   if let jsonString = String(data: data, encoding: .utf8) {
+                       print("Response data: \(jsonString)")
+                   }
+                   
+                   DispatchQueue.main.async {
+                       completion(.failure(NetworkError.decodingFailed(error)))
+                   }
+               }
+           }
+           
+           task.resume()
+       }
+    
     func searchPet(photo: UIImage, species: String, color: String, gender: String?, breed: String?, coordinates: CLLocationCoordinate2D?, completion: @escaping (Result<PetSearchResponse, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/pets/search") else {
             DispatchQueue.main.async {

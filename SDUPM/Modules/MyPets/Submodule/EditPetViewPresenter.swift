@@ -2,12 +2,6 @@
 
 import UIKit
 
-protocol EditPetViewDelegate: AnyObject {
-    func petUpdated(pet: MyPetModel)
-    func petDeleted(petId: Int)
-    func showError(message: String)
-}
-
 class EditPetViewPresenter {
     
     private let provider = NetworkServiceProvider()
@@ -45,7 +39,7 @@ class EditPetViewPresenter {
                     species: updatedPet.species,
                     breed: updatedPet.breed ?? "",
                     age: ageStr,
-                    color: updatedPet.color,
+                    color: updatedPet.color ?? "",
                     images: [], // Существующие изображения сохраняем отдельно
                     status: updatedPet.status,
                     description: updatedPet.distinctive_features ?? "",
@@ -82,7 +76,7 @@ class EditPetViewPresenter {
                     species: updatedPet.species,
                     breed: updatedPet.breed ?? "",
                     age: ageStr,
-                    color: updatedPet.color,
+                    color: updatedPet.color ?? "",
                     images: [], // Существующие изображения сохраняем отдельно
                     status: updatedPet.status,
                     description: updatedPet.distinctive_features ?? "",
@@ -115,6 +109,15 @@ class EditPetViewPresenter {
                 case .failure(let error):
                     self?.view?.showError(message: "Failed to delete pet: \(error.localizedDescription)")
                 }
+            }
+        }
+    }
+    
+    // Versión mejorada para soportar callback
+    func deletePet(petId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
+        provider.deletePet(petId: petId) { result in
+            DispatchQueue.main.async {
+                completion(result)
             }
         }
     }
