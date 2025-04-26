@@ -72,10 +72,29 @@ class MyPetCell: UICollectionViewCell {
         return label
     }()
     
+    // Улучшенная кнопка редактирования - компактная версия
     private let editButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setImage(UIImage(systemName: "pencil.circle.fill"), for: .normal)
+        
+        // Настройка фона и формы - компактный круглый дизайн
+        button.backgroundColor = UIColor.systemGray4
+        button.layer.cornerRadius = 12
+        
+        // Настройка иконки с оптимальным размером
+        let config = UIImage.SymbolConfiguration(pointSize: 12, weight: .medium)
+        let image = UIImage(systemName: "pencil", withConfiguration: config)
+        button.setImage(image, for: .normal)
         button.tintColor = .systemGreen
+        
+        // Компактные отступы
+        button.contentEdgeInsets = UIEdgeInsets(top: 5, left: 5, bottom: 5, right: 5)
+        
+        // Легкая тень для выделения, но не перегружая
+        button.layer.shadowColor = UIColor.systemGreen.withAlphaComponent(0.2).cgColor
+        button.layer.shadowOffset = CGSize(width: 0, height: 1)
+        button.layer.shadowRadius = 2
+        button.layer.shadowOpacity = 0.2
+        
         return button
     }()
     
@@ -126,10 +145,11 @@ class MyPetCell: UICollectionViewCell {
             make.height.equalTo(100)
         }
         
+        // Изменена позиция кнопки редактирования - верхний правый угол
         editButton.snp.makeConstraints { make in
             make.top.equalToSuperview().inset(12)
             make.trailing.equalToSuperview().inset(12)
-            make.width.height.equalTo(30)
+            make.size.equalTo(24)
         }
         
         deleteButton.snp.makeConstraints { make in
@@ -177,6 +197,10 @@ class MyPetCell: UICollectionViewCell {
     private func setupActions() {
         editButton.addTarget(self, action: #selector(editButtonTapped), for: .touchUpInside)
         deleteButton.addTarget(self, action: #selector(deleteButtonTapped), for: .touchUpInside)
+        
+        // Добавляем эффект нажатия
+        editButton.addTarget(self, action: #selector(buttonTouchDown), for: .touchDown)
+        editButton.addTarget(self, action: #selector(buttonTouchUp), for: [.touchUpInside, .touchUpOutside, .touchCancel])
     }
     
     @objc private func editButtonTapped() {
@@ -185,6 +209,21 @@ class MyPetCell: UICollectionViewCell {
     
     @objc private func deleteButtonTapped() {
         onDeleteTapped?()
+    }
+    
+    // Добавляем анимации для более интерактивного отклика
+    @objc private func buttonTouchDown() {
+        UIView.animate(withDuration: 0.1) {
+            self.editButton.transform = CGAffineTransform(scaleX: 0.95, y: 0.95)
+            self.editButton.alpha = 0.9
+        }
+    }
+    
+    @objc private func buttonTouchUp() {
+        UIView.animate(withDuration: 0.1) {
+            self.editButton.transform = .identity
+            self.editButton.alpha = 1.0
+        }
     }
     
     // MARK: - Public Methods
