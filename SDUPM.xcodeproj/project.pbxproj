@@ -11,7 +11,6 @@
 		040907B42DB2A11400862F6A /* PetAnnotation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 040907B32DB2A11400862F6A /* PetAnnotation.swift */; };
 		040907B92DB2B9D700862F6A /* MainViewProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 040907B82DB2B9BF00862F6A /* MainViewProtocol.swift */; };
 		040907BB2DB2B9EA00862F6A /* MainPresenterProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 040907BA2DB2B9DC00862F6A /* MainPresenterProtocol.swift */; };
-		044C3BAE2DA4DEAD004D9745 /* FindPetPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044C3BAD2DA4DEAD004D9745 /* FindPetPresenter.swift */; };
 		044C3BB02DA4ED49004D9745 /* PetDetailCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044C3BAF2DA4ED49004D9745 /* PetDetailCell.swift */; };
 		044C3BB42DA7EF0B004D9745 /* ConfirmEmailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044C3BB32DA7EF0B004D9745 /* ConfirmEmailViewController.swift */; };
 		044C3BB62DA8C090004D9745 /* ProfilePresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044C3BB52DA8C090004D9745 /* ProfilePresenter.swift */; };
@@ -49,6 +48,7 @@
 		04D2BA072DBC2607003241E5 /* EditPetViewPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D2BA062DBC2605003241E5 /* EditPetViewPresenter.swift */; };
 		04D2BA092DBC261C003241E5 /* EditPetViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D2BA082DBC261A003241E5 /* EditPetViewController.swift */; };
 		04D2BA142DBC5AB1003241E5 /* FindPetSearchPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D2BA132DBC5AAB003241E5 /* FindPetSearchPresenter.swift */; };
+		04D2BA172DBC6F31003241E5 /* FindPetPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D2BA162DBC6F31003241E5 /* FindPetPresenter.swift */; };
 		19213FB42CC3C04B006D8BE1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FB32CC3C04B006D8BE1 /* AppDelegate.swift */; };
 		19213FB62CC3C04B006D8BE1 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FB52CC3C04B006D8BE1 /* SceneDelegate.swift */; };
 		19213FB82CC3C04B006D8BE1 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19213FB72CC3C04B006D8BE1 /* SignInView.swift */; };
@@ -68,7 +68,6 @@
 		040907B32DB2A11400862F6A /* PetAnnotation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetAnnotation.swift; sourceTree = "<group>"; };
 		040907B82DB2B9BF00862F6A /* MainViewProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewProtocol.swift; sourceTree = "<group>"; };
 		040907BA2DB2B9DC00862F6A /* MainPresenterProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainPresenterProtocol.swift; sourceTree = "<group>"; };
-		044C3BAD2DA4DEAD004D9745 /* FindPetPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindPetPresenter.swift; sourceTree = "<group>"; };
 		044C3BAF2DA4ED49004D9745 /* PetDetailCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetDetailCell.swift; sourceTree = "<group>"; };
 		044C3BB32DA7EF0B004D9745 /* ConfirmEmailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfirmEmailViewController.swift; sourceTree = "<group>"; };
 		044C3BB52DA8C090004D9745 /* ProfilePresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePresenter.swift; sourceTree = "<group>"; };
@@ -105,6 +104,7 @@
 		04D2BA062DBC2605003241E5 /* EditPetViewPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditPetViewPresenter.swift; sourceTree = "<group>"; };
 		04D2BA082DBC261A003241E5 /* EditPetViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditPetViewController.swift; sourceTree = "<group>"; };
 		04D2BA132DBC5AAB003241E5 /* FindPetSearchPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindPetSearchPresenter.swift; sourceTree = "<group>"; };
+		04D2BA162DBC6F31003241E5 /* FindPetPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindPetPresenter.swift; sourceTree = "<group>"; };
 		19213FB02CC3C04B006D8BE1 /* SDUPM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SDUPM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		19213FB32CC3C04B006D8BE1 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		19213FB52CC3C04B006D8BE1 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -163,9 +163,9 @@
 			children = (
 				04D2BA132DBC5AAB003241E5 /* FindPetSearchPresenter.swift */,
 				045000322D9C082B004EE34A /* FindPetViewController.swift */,
-				044C3BAD2DA4DEAD004D9745 /* FindPetPresenter.swift */,
 				044C3BB92DA914A1004D9745 /* FoundPetViewController.swift */,
 				044C3BC82DAE0B47004D9745 /* PetDetailViewController.swift */,
+				04D2BA162DBC6F31003241E5 /* FindPetPresenter.swift */,
 			);
 			path = FindPet;
 			sourceTree = "<group>";
@@ -450,6 +450,7 @@
 				19213FB82CC3C04B006D8BE1 /* SignInView.swift in Sources */,
 				040907B92DB2B9D700862F6A /* MainViewProtocol.swift in Sources */,
 				044C3BCB2DAE15B4004D9745 /* MyPetResponse.swift in Sources */,
+				04D2BA172DBC6F31003241E5 /* FindPetPresenter.swift in Sources */,
 				044C3BB42DA7EF0B004D9745 /* ConfirmEmailViewController.swift in Sources */,
 				045C307D2DB2CD3A007A0ED0 /* ChatPresenter.swift in Sources */,
 				040907BB2DB2B9EA00862F6A /* MainPresenterProtocol.swift in Sources */,
@@ -457,7 +458,6 @@
 				045C30762DB2CCCC007A0ED0 /* CreateChatViewController.swift in Sources */,
 				19213FB42CC3C04B006D8BE1 /* AppDelegate.swift in Sources */,
 				19213FCA2CC3C2B6006D8BE1 /* LoginView.swift in Sources */,
-				044C3BAE2DA4DEAD004D9745 /* FindPetPresenter.swift in Sources */,
 				19213FD02CC4DD97006D8BE1 /* ProfileView.swift in Sources */,
 				045000542D9FB545004EE34A /* PetDetailInfoModel.swift in Sources */,
 				044C3BB82DA8C0F6004D9745 /* ProfileModel.swift in Sources */,

@@ -120,6 +120,9 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
     }
     
     private func setupViews() {
+        view.backgroundColor = .systemBackground
+        navigationController?.navigationBar.tintColor = .systemGreen
+        
         view.addSubview(uploadPhotoButton)
         uploadPhotoButton.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide).offset(20)
@@ -300,6 +303,7 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
             present(imagePicker, animated: true)
         }
     }
+    
     @objc private func searchPetTapped() {
         guard let species = speciesTextField.text, !species.isEmpty,
               let color = colorTextField.text, !color.isEmpty,
@@ -311,230 +315,73 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
         let gender = genderTextField.text?.isEmpty == true ? nil : genderTextField.text
         let breed = breedTextField.text?.isEmpty == true ? nil : breedTextField.text
         
-        // First, ask about search purpose
-        let actionSheet = UIAlertController(
-            title: "Search Purpose",
-            message: "What would you like to do?",
-            preferredStyle: .actionSheet
-        )
-        
-        actionSheet.addAction(UIAlertAction(title: "Find My Pet", style: .default) { [weak self] _ in
-            guard let self = self else { return }
-            
-            self.showLocationConfirmationAlert(
-                photo: self.selectedImages.first!,
-                species: species,
-                color: color,
-                gender: gender,
-                breed: breed,
-                isFindingOwner: false
-            )
-        })
-        
-        actionSheet.addAction(UIAlertAction(title: "Find Pet Owner", style: .default) { [weak self] _ in
-            guard let self = self else { return }
-            
-            self.showLocationConfirmationAlert(
-                photo: self.selectedImages.first!,
-                species: species,
-                color: color,
-                gender: gender,
-                breed: breed,
-                isFindingOwner: true
-            )
-        })
-        
-        // Add new option to report a found pet
-        actionSheet.addAction(UIAlertAction(title: "Report Found Pet", style: .default) { [weak self] _ in
-            guard let self = self else { return }
-            
-            // Ask for location to add found pet
-            self.askLocationForFoundPet(
-                photo: self.selectedImages.first!,
-                species: species,
-                color: color,
-                gender: gender,
-                breed: breed
-            )
-        })
-        
-        actionSheet.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
-        present(actionSheet, animated: true)
-    }
-    
-    private func askLocationForFoundPet(photo: UIImage, species: String, color: String, gender: String?, breed: String?) {
+        // Спрашиваем пользователя, хочет ли он добавить найденного питомца в список найденных
         let alert = UIAlertController(
-            title: "Add Pet to Found List",
-            message: "We need your current location to help owners find where their pet was last seen. Do you want to share your location?",
+            title: "Add Found Pet",
+            message: "Would you like to add this pet to the list of found pets?",
             preferredStyle: .alert
         )
         
-        alert.addAction(UIAlertAction(title: "Yes, Share Location", style: .default) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: "Yes", style: .default) { [weak self] _ in
             guard let self = self else { return }
             
-            // Request location permission
+            // Запрашиваем разрешение на использование местоположения
             self.requestLocationPermissionIfNeeded { hasPermission in
                 if hasPermission {
-                    // Show loading during location fetch
+                    // Показываем индикатор загрузки
                     DispatchQueue.main.async {
                         self.view.isUserInteractionEnabled = false
                         self.activityIndicator.startAnimating()
                     }
                     
-                    // Get current location
+                    // Получаем текущее местоположение
                     self.getLocation { coordinates in
                         DispatchQueue.main.async {
                             self.view.isUserInteractionEnabled = true
                             self.activityIndicator.stopAnimating()
                             
-                            // Report found pet with or without location
-                            self.presenter.reportFoundPet(
-                                photo: photo,
+                            // Выполняем поиск с сохранением (save: true)
+                            self.presenter.searchPet(
+                                photo: self.selectedImages.first!,
                                 species: species.lowercased(),
                                 color: color,
                                 gender: gender,
                                 breed: breed,
-                                location: coordinates
+                                coordX: coordinates?.latitude,
+                                coordY: coordinates?.longitude,
+                                save: true
                             )
                         }
                     }
                 } else {
-                    // No permission - show alert
-                    DispatchQueue.main.async {
-                        self.showErrorAlert(message: "Location permission denied. The pet will be added without location information.")
-                        
-                        // Report found pet without location
-                        self.presenter.reportFoundPet(
-                            photo: photo,
-                            species: species.lowercased(),
-                            color: color,
-                            gender: gender,
-                            breed: breed,
-                            location: nil
-                        )
-                    }
+                    // Если нет разрешения на местоположение, всё равно выполняем поиск
+                    self.presenter.searchPet(
+                        photo: self.selectedImages.first!,
+                        species: species.lowercased(),
+                        color: color,
+                        gender: gender,
+                        breed: breed,
+                        coordX: nil,
+                        coordY: nil,
+                        save: true
+                    )
                 }
             }
         })
         
-        alert.addAction(UIAlertAction(title: "No, Continue Without Location", style: .cancel) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: "No", style: .cancel) { [weak self] _ in
             guard let self = self else { return }
             
-            // Report found pet without location
-            self.presenter.reportFoundPet(
-                photo: photo,
-                species: species.lowercased(),
-                color: color,
-                gender: gender,
-                breed: breed,
-                location: nil
-            )
-        })
-        
-        present(alert, animated: true)
-    }
-    
-    private func showLocationConfirmationAlert(photo: UIImage, species: String, color: String, gender: String?, breed: String?, isFindingOwner: Bool = true) {
-        let alert = UIAlertController(
-            title: "Location Needed",
-            message: isFindingOwner
-                ? "To find the pet owner, we need your current location. Do you want to share your location?"
-                : "Sharing your location will help us find your pet. Do you want to share your location?",
-            preferredStyle: .alert
-        )
-        
-        alert.addAction(UIAlertAction(title: "Yes, Share Location", style: .default) { [weak self] _ in
-            guard let self = self else { return }
-            
-            // Request location permission if needed
-            self.requestLocationPermissionIfNeeded { hasPermission in
-                if hasPermission {
-                    // Show loading indicator during location fetch
-                    DispatchQueue.main.async {
-                        self.view.isUserInteractionEnabled = false
-                        self.activityIndicator.startAnimating()
-                    }
-                    
-                    // Get current location
-                    self.getLocation { coordinates in
-                        DispatchQueue.main.async {
-                            self.view.isUserInteractionEnabled = true
-                            self.activityIndicator.stopAnimating()
-                            
-                            if let coordinates = coordinates {
-                                // Proceed with search using location
-                                self.presenter.searchPet(
-                                    photo: photo,
-                                    species: species.lowercased(),
-                                    color: color,
-                                    gender: gender,
-                                    breed: breed,
-                                    isFindingOwner: isFindingOwner
-                                )
-                            } else {
-                                // Show error - couldn't get location
-                                self.showErrorAlert(message: "Could not determine your location. Please try again or search without location.")
-                            }
-                        }
-                    }
-                } else {
-                    // No permission - show alert
-                    DispatchQueue.main.async {
-                        self.showNoLocationPermissionAlert(
-                            photo: photo,
-                            species: species,
-                            color: color,
-                            gender: gender,
-                            breed: breed,
-                            isFindingOwner: isFindingOwner
-                        )
-                    }
-                }
-            }
-        })
-        
-        alert.addAction(UIAlertAction(title: "No, Search Without Location", style: .cancel) { [weak self] _ in
-            guard let self = self else { return }
-            
-            // Proceed without location
+            // Выполняем поиск без сохранения (save: false)
             self.presenter.searchPet(
-                photo: photo,
+                photo: self.selectedImages.first!,
                 species: species.lowercased(),
                 color: color,
                 gender: gender,
                 breed: breed,
-                isFindingOwner: isFindingOwner
-            )
-        })
-        
-        present(alert, animated: true)
-    }
-    
-    private func showNoLocationPermissionAlert(photo: UIImage, species: String, color: String, gender: String?, breed: String?, isFindingOwner: Bool = true) {
-        let alert = UIAlertController(
-            title: "Location Access Denied",
-            message: "You have denied access to your location. You can change this in your device settings or search without location.",
-            preferredStyle: .alert
-        )
-        
-        alert.addAction(UIAlertAction(title: "Open Settings", style: .default) { _ in
-            if let url = URL(string: UIApplication.openSettingsURLString) {
-                UIApplication.shared.open(url)
-            }
-        })
-        
-        alert.addAction(UIAlertAction(title: "Search Without Location", style: .cancel) { [weak self] _ in
-            guard let self = self else { return }
-            
-            // Proceed without location
-            self.presenter.searchPet(
-                photo: photo,
-                species: species.lowercased(),
-                color: color,
-                gender: gender,
-                breed: breed,
-                isFindingOwner: isFindingOwner
+                coordX: nil,
+                coordY: nil,
+                save: false
             )
         })
         
@@ -571,11 +418,8 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
     }
     
     func showSuccess(message: String) {
-        DispatchQueue.main.async {
-            let alert = UIAlertController(title: "Success", message: message, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
-            self.present(alert, animated: true)
-        }
+        // Убираем алерт успеха и вместо этого перенаправляем на страницу результатов
+        // Обработка ответа уже происходит в presenter.searchPet
     }
     
     // MARK: - UIImagePickerControllerDelegate
