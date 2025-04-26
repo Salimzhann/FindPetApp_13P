@@ -4,6 +4,7 @@ import UIKit
 
 protocol EditPetViewDelegate: AnyObject {
     func petUpdated(pet: MyPetModel)
+    func petDeleted(petId: Int)
     func showError(message: String)
 }
 
@@ -44,7 +45,7 @@ class EditPetViewPresenter {
                     species: updatedPet.species,
                     breed: updatedPet.breed ?? "",
                     age: ageStr,
-                    color:"",
+                    color: updatedPet.color,
                     images: [], // Существующие изображения сохраняем отдельно
                     status: updatedPet.status,
                     description: updatedPet.distinctive_features ?? "",
@@ -81,7 +82,7 @@ class EditPetViewPresenter {
                     species: updatedPet.species,
                     breed: updatedPet.breed ?? "",
                     age: ageStr,
-                    color:"",
+                    color: updatedPet.color,
                     images: [], // Существующие изображения сохраняем отдельно
                     status: updatedPet.status,
                     description: updatedPet.distinctive_features ?? "",
@@ -98,6 +99,21 @@ class EditPetViewPresenter {
             case .failure(let error):
                 DispatchQueue.main.async {
                     completion(.failure(error))
+                }
+            }
+        }
+    }
+    
+    // MARK: - Delete Pet
+    
+    func deletePet(petId: Int) {
+        provider.deletePet(petId: petId) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    self?.view?.petDeleted(petId: petId)
+                case .failure(let error):
+                    self?.view?.showError(message: "Failed to delete pet: \(error.localizedDescription)")
                 }
             }
         }

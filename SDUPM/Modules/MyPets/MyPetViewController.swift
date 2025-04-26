@@ -401,21 +401,56 @@ extension MyPetViewController: UICollectionViewDataSource, UICollectionViewDeleg
     }
 }
 
-// MARK: - EditPetViewDelegate
+// Путь: SDUPM/Modules/MyPets/MyPetViewController.swift
+// Путь: SDUPM/Modules/MyPets/MyPetViewController.swift
 
+// MARK: - EditPetViewDelegate
 extension MyPetViewController: EditPetViewDelegate {
     func petUpdated(pet: MyPetModel) {
-        // Находим и обновляем питомца в массиве
-        if let index = myPetsArray.firstIndex(where: { $0.id == pet.id }) {
-            // Создаем обновленную модель с сохранением существующих изображений
-            var updatedPet = pet
-            updatedPet.images = myPetsArray[index].images
-            
-            myPetsArray[index] = updatedPet
-            
-            DispatchQueue.main.async { [weak self] in
-                self?.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
-            }
+        // После обновления питомца просто перезагружаем все данные
+        presenter.fetchUserPets()
+    }
+    
+    func petDeleted(petId: Int) {
+        // Самый простой подход - просто запросить данные заново
+        presenter.fetchUserPets()
+        
+        // Показываем уведомление об успешном удалении
+        showSuccessToast(message: "Pet successfully deleted")
+    }
+    
+    // Helper методы
+    private func showSuccessToast(message: String) {
+        let toastLabel = UILabel()
+        toastLabel.backgroundColor = UIColor.systemGreen.withAlphaComponent(0.7)
+        toastLabel.textColor = .white
+        toastLabel.textAlignment = .center
+        toastLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        toastLabel.text = message
+        toastLabel.alpha = 1.0
+        toastLabel.layer.cornerRadius = 10
+        toastLabel.clipsToBounds = true
+        toastLabel.numberOfLines = 0
+        
+        view.addSubview(toastLabel)
+        
+        toastLabel.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.bottom.equalToSuperview().inset(100)
+            make.leading.trailing.equalToSuperview().inset(40)
+            make.height.greaterThanOrEqualTo(50)
         }
+        
+        UIView.animate(withDuration: 3.0, delay: 0.1, options: .curveEaseOut, animations: {
+            toastLabel.alpha = 0.0
+        }, completion: { _ in
+            toastLabel.removeFromSuperview()
+        })
+    }
+    
+    private func showAlert(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 }

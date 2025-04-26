@@ -78,6 +78,16 @@ class EditPetViewController: UIViewController, UITextViewDelegate {
         return button
     }()
     
+    private let deleteButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("Delete Pet", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
+        button.backgroundColor = .systemRed
+        button.tintColor = .white
+        button.layer.cornerRadius = 12
+        return button
+    }()
+    
     private let activityIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .medium)
         indicator.hidesWhenStopped = true
@@ -218,6 +228,15 @@ class EditPetViewController: UIViewController, UITextViewDelegate {
             make.top.equalTo(statusSegmentedControl.snp.bottom).offset(32)
             make.leading.trailing.equalToSuperview().inset(20)
             make.height.equalTo(50)
+        }
+        
+        // Delete button
+        contentView.addSubview(deleteButton)
+        
+        deleteButton.snp.makeConstraints { make in
+            make.top.equalTo(updateButton.snp.bottom).offset(16)
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(50)
             make.bottom.equalToSuperview().inset(32)
         }
         
@@ -229,6 +248,7 @@ class EditPetViewController: UIViewController, UITextViewDelegate {
     private func setupActions() {
         closeButton.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
         updateButton.addTarget(self, action: #selector(updateButtonTapped), for: .touchUpInside)
+        deleteButton.addTarget(self, action: #selector(deleteButtonTapped), for: .touchUpInside)
         distinctiveFeaturesTextView.delegate = self
     }
     
@@ -336,6 +356,32 @@ class EditPetViewController: UIViewController, UITextViewDelegate {
         )
     }
     
+    @objc private func deleteButtonTapped() {
+        // Show confirmation alert before deleting
+        let alertController = UIAlertController(
+            title: "Confirm Deletion",
+            message: "Are you sure you want to delete \(pet.name)? This action cannot be undone.",
+            preferredStyle: .alert
+        )
+        
+        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        alertController.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // Show loading state
+            self.deleteButton.setTitle("", for: .normal)
+            self.activityIndicator.startAnimating()
+            self.deleteButton.isEnabled = false
+            self.updateButton.isEnabled = false
+            
+            // Call presenter to delete pet
+            self.presenter.deletePet(petId: self.pet.id)
+        })
+        
+        present(alertController, animated: true)
+    }
+    
     private func showAlert(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
@@ -378,10 +424,16 @@ extension EditPetViewController: EditPetViewDelegate {
         dismiss(animated: true)
     }
     
+    func petDeleted(petId: Int) {
+        delegate?.petDeleted(petId: petId)
+        dismiss(animated: true)
+    }
+    
     func showError(message: String) {
         updateButton.setTitle("Update Pet", for: .normal)
-        activityIndicator.stopAnimating()
+        deleteButton.isEnabled = true
         updateButton.isEnabled = true
+        activityIndicator.stopAnimating()
         
         showAlert(title: "Error", message: message)
     }
