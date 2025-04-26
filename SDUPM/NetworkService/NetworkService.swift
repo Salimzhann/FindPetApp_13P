@@ -814,22 +814,53 @@ class NetworkServiceProvider {
         }
     }
     
-    // MARK: - Fetch Found Pets (Mock Implementation)
-    
-    /// Получение списка найденных питомцев (мок-данные)
-    func fetchFoundPets(page: Int = 1, limit: Int = 20, completion: @escaping ([Pet]?, Error?) -> Void) {
-        // Моковые данные для найденных питомцев
-        let mockFoundPets: [Pet] = [
-            Pet(id: 20, name: "Buddy", species: "dog", breed: "Лабрадор", age: 3, color: "золотистый", gender: "male", distinctive_features: "Белое пятно на груди, синий ошейник", last_seen_location: "Парк Горького", photos: [PetPhoto(id: 101, pet_id: 20, photo_url: "https://www.thesprucepets.com/thmb/hxWjs7evF2hP1Fb1c1HAvRi_Rw0=/2765x0/filters:no_upscale():strip_icc()/chinese-dog-breeds-4797219-hero-2a1e9c5ed2c54d00aef75b05c5db399c.jpg", is_primary: true, created_at: "2025-04-15T01:42:08.087996")], status: "found", created_at: "2025-04-15T06:42:07", updated_at: "2025-04-15T06:42:07", lost_date: nil, owner_id: 1),
-            Pet(id: 21, name: "Luna", species: "cat", breed: "Сиамская", age: 2, color: "кремовая с коричневыми отметинами", gender: "female", distinctive_features: "Голубые глаза, красный ошейник с бубенчиком", last_seen_location: "Район Медеу", photos: [PetPhoto(id: 102, pet_id: 21, photo_url: "https://www.tippaws.com/cdn/shop/articles/getting-to-know-your-bengal-cat-tippaws.png?v=1729077812", is_primary: true, created_at: "2025-04-15T01:43:09.349109")], status: "found", created_at: "2025-04-15T06:43:09", updated_at: "2025-04-15T06:43:09", lost_date: nil, owner_id: 2),
-            Pet(id: 22, name: "Max", species: "dog", breed: "Бульдог", age: 4, color: "белый с коричневыми пятнами", gender: "male", distinctive_features: "Короткий хвост, зеленый ошейник", last_seen_location: "Проспект Достык", photos: [PetPhoto(id: 103, pet_id: 22, photo_url: "https://cdn.britannica.com/79/232779-050-6B0411D7/German-Shepherd-dog-Alsatian.jpg", is_primary: true, created_at: "2025-04-15T04:52:19.053884")], status: "found", created_at: "2025-04-15T09:52:18", updated_at: "2025-04-15T09:52:18", lost_date: nil, owner_id: 3)
-        ]
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            completion(mockFoundPets, nil)
+    func fetchFoundPets(completion: @escaping ([Pet]?, Error?) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/pets/found") else {
+            DispatchQueue.main.async {
+                completion(nil, NetworkError.invalidURL)
+            }
+            return
         }
+        
+        let request = createAuthorizedRequest(url: url, method: "GET")
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion(nil, error)
+                }
+                return
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+                DispatchQueue.main.async {
+                    completion(nil, NetworkError.requestFailed(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 0))
+                }
+                return
+            }
+            
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completion(nil, NetworkError.noData)
+                }
+                return
+            }
+            
+            do {
+                let pets = try JSONDecoder().decode([Pet].self, from: data)
+                DispatchQueue.main.async {
+                    completion(pets, nil)
+                }
+            } catch {
+                print("Error decoding pets: \(error)")
+                DispatchQueue.main.async {
+                    completion(nil, NetworkError.decodingFailed(error))
+                }
+            }
+        }
+        
+        task.resume()
     }
-    
     // MARK: - Authentication API Methods
     
     /// Вход в систему
