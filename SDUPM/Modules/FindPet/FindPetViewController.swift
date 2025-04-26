@@ -300,7 +300,6 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
             present(imagePicker, animated: true)
         }
     }
-    
     @objc private func searchPetTapped() {
         guard let species = speciesTextField.text, !species.isEmpty,
               let color = colorTextField.text, !color.isEmpty,

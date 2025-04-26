@@ -12,7 +12,6 @@ class FindPetSearchPresenter: IFindPetSearchPresenter {
     
     private let provider = NetworkServiceProvider()
     weak var view: IFindPetView?
-    
     func searchPet(photo: UIImage, species: String, color: String, gender: String?, breed: String?, isFindingOwner: Bool = false) {
         view?.showLoading()
         
@@ -28,17 +27,20 @@ class FindPetSearchPresenter: IFindPetSearchPresenter {
             breed: breed,
             coordX: coordX,
             coordY: coordY,
+            save: false, // Не сохраняем при поиске
             completion: { [weak self] (result: Result<PetSearchResponse, Error>) in
                 guard let self = self else { return }
                 
-                switch result {
-                case .success(let response):
+                DispatchQueue.main.async {
                     self.view?.hideLoading()
-                    self.view?.navigateToSearchResults(response: response)
                     
-                case .failure(let error):
-                    self.view?.hideLoading()
-                    self.view?.showError(message: "Search failed: \(error.localizedDescription)")
+                    switch result {
+                    case .success(let response):
+                        self.view?.navigateToSearchResults(response: response)
+                        
+                    case .failure(let error):
+                        self.view?.showError(message: "Search failed: \(error.localizedDescription)")
+                    }
                 }
             }
         )
@@ -50,21 +52,23 @@ class FindPetSearchPresenter: IFindPetSearchPresenter {
         let coordX = location?.longitude
         let coordY = location?.latitude
         
-        provider.reportFoundPet(
+        provider.searchPet(
             photo: photo,
             species: species,
             color: color,
             gender: gender,
             breed: breed,
-            coordinates: location,
-            completion: { [weak self] (result: Result<Void, Error>) in
+            coordX: coordX,
+            coordY: coordY,
+            save: true, // Важно: здесь мы сохраняем найденное животное в базу данных
+            completion: { [weak self] (result: Result<PetSearchResponse, Error>) in
                 guard let self = self else { return }
                 
                 DispatchQueue.main.async {
                     self.view?.hideLoading()
                     
                     switch result {
-                    case .success:
+                    case .success(_):
                         self.view?.showSuccess(message: "Pet successfully added to found list.")
                     case .failure(let error):
                         self.view?.showError(message: "Failed to add pet: \(error.localizedDescription)")
@@ -73,4 +77,5 @@ class FindPetSearchPresenter: IFindPetSearchPresenter {
             }
         )
     }
+
 }

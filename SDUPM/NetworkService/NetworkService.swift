@@ -1611,9 +1611,20 @@ class NetworkServiceProvider {
     // Этот код нужно добавить в класс NetworkServiceProvider в файле NetworkService.swift
 
     // MARK: - Search Pet API Requests
+    // Путь: SDUPM/NetworkService/NetworkService.swift
 
-    /// Поиск домашнего животного по фотографии и критериям
-    func searchPet(photo: UIImage, species: String, color: String, gender: String?, breed: String?, coordX: Double? = nil, coordY: Double? = nil, completion: @escaping (Result<PetSearchResponse, Error>) -> Void) {
+    // Обновленный метод searchPet для поддержки сохранения и передачи координат
+    func searchPet(
+        photo: UIImage,
+        species: String,
+        color: String,
+        gender: String?,
+        breed: String?,
+        coordX: Double? = nil,
+        coordY: Double? = nil,
+        save: Bool = false,
+        completion: @escaping (Result<PetSearchResponse, Error>) -> Void
+    ) {
         guard let url = URL(string: "\(api)/api/v1/pets/search") else {
             DispatchQueue.main.async {
                 completion(.failure(NetworkError.invalidURL))
@@ -1673,6 +1684,11 @@ class NetworkServiceProvider {
             body.append("\(coordY)\r\n".data(using: .utf8)!)
         }
         
+        // Добавляем параметр save для сохранения в базу данных
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"save\"\r\n\r\n".data(using: .utf8)!)
+        body.append("\(save)\r\n".data(using: .utf8)!)
+        
         // Закрываем multipart форму
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         
@@ -1681,12 +1697,26 @@ class NetworkServiceProvider {
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             // Обработка сетевой ошибки
             if let error = error {
-                self.handleNetworkError(error, completion: completion)
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.unknownError(error)))
+                }
                 return
             }
             
             // Обработка HTTP ответа
-            if !self.handleHTTPResponse(response: response, completion: completion) {
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                }
+                return
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                DispatchQueue.main.async {
+                    let message = data != nil ? String(data: data!, encoding: .utf8) ?? "Unknown error" : "Unknown error"
+                    print("Server error: \(message)")
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                }
                 return
             }
             
@@ -1696,6 +1726,11 @@ class NetworkServiceProvider {
                     completion(.failure(NetworkError.noData))
                 }
                 return
+            }
+            
+            // Вывод ответа для отладки
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("Response data: \(jsonString)")
             }
             
             // Декодирование ответа
