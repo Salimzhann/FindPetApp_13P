@@ -44,6 +44,7 @@
 		045C307F2DB2D4DA007A0ED0 /* MessageCells.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C307E2DB2D4D7007A0ED0 /* MessageCells.swift */; };
 		045C30812DB2DBA6007A0ED0 /* CreateChatPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C30802DB2DBA6007A0ED0 /* CreateChatPresenter.swift */; };
 		045C30832DB30172007A0ED0 /* LoginResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C30822DB30172007A0ED0 /* LoginResponse.swift */; };
+		04A19A562DBF4B5E00FFCF00 /* EditProfileViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A19A552DBF4B5E00FFCF00 /* EditProfileViewController.swift */; };
 		04D2BA052DBC2199003241E5 /* MainPetDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D2BA042DBC2195003241E5 /* MainPetDetailViewController.swift */; };
 		04D2BA072DBC2607003241E5 /* EditPetViewPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D2BA062DBC2605003241E5 /* EditPetViewPresenter.swift */; };
 		04D2BA092DBC261C003241E5 /* EditPetViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D2BA082DBC261A003241E5 /* EditPetViewController.swift */; };
@@ -100,6 +101,7 @@
 		045C307E2DB2D4D7007A0ED0 /* MessageCells.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageCells.swift; sourceTree = "<group>"; };
 		045C30802DB2DBA6007A0ED0 /* CreateChatPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateChatPresenter.swift; sourceTree = "<group>"; };
 		045C30822DB30172007A0ED0 /* LoginResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginResponse.swift; sourceTree = "<group>"; };
+		04A19A552DBF4B5E00FFCF00 /* EditProfileViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditProfileViewController.swift; sourceTree = "<group>"; };
 		04D2BA042DBC2195003241E5 /* MainPetDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainPetDetailViewController.swift; sourceTree = "<group>"; };
 		04D2BA062DBC2605003241E5 /* EditPetViewPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditPetViewPresenter.swift; sourceTree = "<group>"; };
 		04D2BA082DBC261A003241E5 /* EditPetViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditPetViewController.swift; sourceTree = "<group>"; };
@@ -154,6 +156,7 @@
 			children = (
 				19213FCF2CC4DD97006D8BE1 /* ProfileView.swift */,
 				044C3BB52DA8C090004D9745 /* ProfilePresenter.swift */,
+				04A19A552DBF4B5E00FFCF00 /* EditProfileViewController.swift */,
 			);
 			path = Profile;
 			sourceTree = "<group>";
@@ -427,6 +430,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				04A19A562DBF4B5E00FFCF00 /* EditProfileViewController.swift in Sources */,
 				044C3BC72DAE0AB9004D9745 /* PetSearchResponse.swift in Sources */,
 				045000522D9D23D0004EE34A /* MyPetModel.swift in Sources */,
 				04D2BA142DBC5AB1003241E5 /* FindPetSearchPresenter.swift in Sources */,

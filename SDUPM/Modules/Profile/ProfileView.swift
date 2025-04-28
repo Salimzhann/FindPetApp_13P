@@ -7,12 +7,15 @@ protocol ProfileViewProtocol: AnyObject {
     func hideLoading()
     func showError(message: String)
     func showSuccess(message: String)
-    func navigateToLogin()
 }
 
-class ProfileView: UIViewController, ProfileViewProtocol {
+class ProfileView: UIViewController, ProfileViewProtocol, EditProfileDelegate {
     
     private let presenter: ProfilePresenterProtocol = ProfilePresenter()
+    
+    private var userProfile: UserProfile?
+    
+    // MARK: - UI Components
     
     private let scrollView = UIScrollView()
     private let contentView = UIView()
@@ -34,6 +37,13 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         return indicator
     }()
     
+    private let nameLabel: UILabel = {
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 22, weight: .bold)
+        label.textAlignment = .center
+        return label
+    }()
+    
     private let emailLabel: UILabel = {
         let label = UILabel()
         label.font = .systemFont(ofSize: 16, weight: .regular)
@@ -42,55 +52,41 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         return label
     }()
     
-    private let fullNameTextField: UITextField = {
-        let textField = UITextField()
-        textField.placeholder = "Full Name"
-        textField.font = .systemFont(ofSize: 18, weight: .medium)
-        textField.borderStyle = .roundedRect
-        textField.layer.cornerRadius = 12
-        textField.layer.borderWidth = 1
-        textField.layer.borderColor = UIColor.systemGray5.cgColor
-        textField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: textField.frame.height))
-        textField.leftViewMode = .always
-        return textField
+    private let phoneLabel: UILabel = {
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 16, weight: .regular)
+        label.textColor = .secondaryLabel
+        label.textAlignment = .center
+        return label
     }()
     
-    private let phoneTextField: UITextField = {
-        let textField = UITextField()
-        textField.placeholder = "Phone Number"
-        textField.font = .systemFont(ofSize: 18, weight: .medium)
-        textField.borderStyle = .roundedRect
-        textField.layer.cornerRadius = 12
-        textField.layer.borderWidth = 1
-        textField.layer.borderColor = UIColor.systemGray5.cgColor
-        textField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: textField.frame.height))
-        textField.leftViewMode = .always
-        textField.keyboardType = .phonePad
-        return textField
-    }()
-    
-    private let passwordTextField: UITextField = {
-        let textField = UITextField()
-        textField.placeholder = "New Password (optional)"
-        textField.font = .systemFont(ofSize: 18, weight: .medium)
-        textField.borderStyle = .roundedRect
-        textField.layer.cornerRadius = 12
-        textField.layer.borderWidth = 1
-        textField.layer.borderColor = UIColor.systemGray5.cgColor
-        textField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 10, height: textField.frame.height))
-        textField.leftViewMode = .always
-        textField.isSecureTextEntry = true
-        return textField
-    }()
-    
-    private let editProfileButton: UIButton = {
+    private let editButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("Update Profile", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
-        button.backgroundColor = .systemGreen
-        button.tintColor = .white
-        button.layer.cornerRadius = 12
+        button.setImage(UIImage(systemName: "gear"), for: .normal)
+        button.tintColor = .systemGreen
+        button.transform = CGAffineTransform(scaleX: 1.5, y: 1.5)
         return button
+    }()
+    
+    private let infoView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .systemGray6
+        view.layer.cornerRadius = 12
+        return view
+    }()
+    
+    private let memberSinceLabel: UILabel = {
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 14)
+        label.textColor = .secondaryLabel
+        return label
+    }()
+    
+    private let accountStatusLabel: UILabel = {
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 14)
+        label.textColor = .secondaryLabel
+        return label
     }()
     
     private let logoutButton: UIButton = {
@@ -113,6 +109,8 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         return button
     }()
     
+    // MARK: - Lifecycle Methods
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
@@ -126,86 +124,60 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         presenter.fetchProfile()
     }
     
+    // MARK: - UI Setup
+    
     private func setupUI() {
         title = "Profile"
         view.backgroundColor = .systemBackground
         
-        view.addSubview(scrollView)
-        scrollView.addSubview(contentView)
+        // Setup navigation bar with edit button
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: editButton)
         
-        scrollView.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
-        }
-        
-        contentView.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
-            make.width.equalTo(scrollView)
-        }
-        
-        [profileImage, emailLabel, fullNameTextField, phoneTextField,
-         passwordTextField, editProfileButton, logoutButton, deleteAccountButton].forEach {
-            contentView.addSubview($0)
-        }
         
         view.addSubview(loadingIndicator)
         
-        // Profile Image
+        view.addSubview(profileImage)
         profileImage.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(30)
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(30)
             make.centerX.equalToSuperview()
             make.width.height.equalTo(100)
         }
         
-        // Email Label
-        emailLabel.snp.makeConstraints { make in
-            make.top.equalTo(profileImage.snp.bottom).offset(8)
+        view.addSubview(nameLabel)
+        nameLabel.snp.makeConstraints { make in
+            make.top.equalTo(profileImage.snp.bottom).offset(20)
             make.centerX.equalToSuperview()
             make.leading.trailing.equalToSuperview().inset(20)
         }
         
-        // Full Name TextField
-        fullNameTextField.snp.makeConstraints { make in
-            make.top.equalTo(emailLabel.snp.bottom).offset(30)
+        view.addSubview(emailLabel)
+        emailLabel.snp.makeConstraints { make in
+            make.top.equalTo(nameLabel.snp.bottom).offset(8)
+            make.centerX.equalToSuperview()
             make.leading.trailing.equalToSuperview().inset(20)
-            make.height.equalTo(50)
         }
         
-        // Phone TextField
-        phoneTextField.snp.makeConstraints { make in
-            make.top.equalTo(fullNameTextField.snp.bottom).offset(15)
+        view.addSubview(phoneLabel)
+        phoneLabel.snp.makeConstraints { make in
+            make.top.equalTo(emailLabel.snp.bottom).offset(8)
+            make.centerX.equalToSuperview()
             make.leading.trailing.equalToSuperview().inset(20)
-            make.height.equalTo(50)
         }
         
-        // Password TextField
-        passwordTextField.snp.makeConstraints { make in
-            make.top.equalTo(phoneTextField.snp.bottom).offset(15)
-            make.leading.trailing.equalToSuperview().inset(20)
-            make.height.equalTo(50)
-        }
-        
-        // Edit Profile Button
-        editProfileButton.snp.makeConstraints { make in
-            make.top.equalTo(passwordTextField.snp.bottom).offset(30)
-            make.leading.trailing.equalToSuperview().inset(20)
-            make.height.equalTo(50)
-        }
-        
-        // Logout Button
-        logoutButton.snp.makeConstraints { make in
-            make.top.equalTo(editProfileButton.snp.bottom).offset(15)
-            make.leading.trailing.equalToSuperview().inset(20)
-            make.height.equalTo(50)
-        }
-        
-        // Delete Account Button
+        view.addSubview(deleteAccountButton)
         deleteAccountButton.snp.makeConstraints { make in
-            make.top.equalTo(logoutButton.snp.bottom).offset(15)
+            make.bottom.equalTo(view.safeAreaLayoutGuide).offset(-20)
             make.leading.trailing.equalToSuperview().inset(20)
             make.height.equalTo(50)
-            make.bottom.equalToSuperview().inset(30)
         }
         
+        view.addSubview(logoutButton)
+        logoutButton.snp.makeConstraints { make in
+            make.bottom.equalTo(deleteAccountButton.snp.top).offset(-10)
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(50)
+        }
+
         // Loading Indicator
         loadingIndicator.snp.makeConstraints { make in
             make.center.equalToSuperview()
@@ -213,24 +185,45 @@ class ProfileView: UIViewController, ProfileViewProtocol {
     }
     
     private func setupActions() {
-        editProfileButton.addTarget(self, action: #selector(updateProfileTapped), for: .touchUpInside)
+        editButton.addTarget(self, action: #selector(editProfileTapped), for: .touchUpInside)
         logoutButton.addTarget(self, action: #selector(logoutTapped), for: .touchUpInside)
         deleteAccountButton.addTarget(self, action: #selector(deleteAccountTapped), for: .touchUpInside)
     }
     
-    @objc private func updateProfileTapped() {
-        guard let fullName = fullNameTextField.text, !fullName.isEmpty,
-              let phone = phoneTextField.text, !phone.isEmpty else {
-            showError(message: "Please fill in required fields")
-            return
+    @objc private func editProfileTapped() {
+        guard let profile = userProfile else { return }
+        
+        let editVC = EditProfileViewController(
+            presenter: presenter,
+            fullName: profile.fullName,
+            phone: profile.phone
+        )
+        editVC.delegate = self
+        
+        let navController = UINavigationController(rootViewController: editVC)
+        navController.modalPresentationStyle = .pageSheet
+        
+        if let sheet = navController.sheetPresentationController {
+            sheet.detents = [.medium()]
+            sheet.prefersGrabberVisible = true
         }
         
-        let password = passwordTextField.text?.isEmpty == true ? nil : passwordTextField.text
-        presenter.updateProfile(fullName: fullName, phone: phone, password: password)
+        present(navController, animated: true)
     }
     
     @objc private func logoutTapped() {
-        presenter.logout()
+        let alert = UIAlertController(
+            title: "Log Out",
+            message: "Are you sure you want to log out?",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Log Out", style: .destructive) { [weak self] _ in
+            self?.presenter.logout()
+        })
+        
+        present(alert, animated: true)
     }
     
     @objc private func deleteAccountTapped() {
@@ -248,12 +241,41 @@ class ProfileView: UIViewController, ProfileViewProtocol {
         present(alert, animated: true)
     }
     
+    // MARK: - EditProfileDelegate
+    
+    func profileUpdated(fullName: String, phone: String) {
+        // Update local UI immediately while the server update is processing
+        nameLabel.text = fullName
+        phoneLabel.text = phone
+        
+        // The full profile refresh will happen in viewWillAppear
+        // Optionally show a success message
+        showSuccess(message: "Profile updated successfully")
+    }
+    
     // MARK: - ProfileViewProtocol
     
     func configure(with model: UserProfile) {
+        userProfile = model
+        
+        nameLabel.text = model.fullName
         emailLabel.text = model.email
-        fullNameTextField.text = model.fullName
-        phoneTextField.text = model.phone
+        phoneLabel.text = model.phone
+        
+        // Format and set created date
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+        if let date = dateFormatter.date(from: model.createdAt) {
+            dateFormatter.dateFormat = "MMMM d, yyyy"
+            memberSinceLabel.text = "Member since: \(dateFormatter.string(from: date))"
+        } else {
+            memberSinceLabel.text = "Member since: Unknown"
+        }
+        
+        // Set account status
+        let verificationStatus = model.isVerified ? "Verified" : "Not verified"
+        let activeStatus = model.isActive ? "Active" : "Inactive"
+        accountStatusLabel.text = "Account status: \(verificationStatus), \(activeStatus)"
     }
     
     func showLoading() {
@@ -271,11 +293,11 @@ class ProfileView: UIViewController, ProfileViewProtocol {
     }
     
     func showError(message: String) {
-//        DispatchQueue.main.async { [weak self] in
-////            let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
-////            alert.addAction(UIAlertAction(title: "OK", style: .default))
-////            self?.present(alert, animated: true)
-//        }
+        DispatchQueue.main.async { [weak self] in
+            let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self?.present(alert, animated: true)
+        }
     }
     
     func showSuccess(message: String) {
@@ -285,6 +307,7 @@ class ProfileView: UIViewController, ProfileViewProtocol {
             self?.present(alert, animated: true)
         }
     }
+    
     private func hideKeyboardWhenTappedAround() {
         let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
         tap.cancelsTouchesInView = false
@@ -293,18 +316,5 @@ class ProfileView: UIViewController, ProfileViewProtocol {
 
     @objc private func dismissKeyboard() {
         view.endEditing(true)
-    }
-    func navigateToLogin() {
-        DispatchQueue.main.async {
-            if let window = UIApplication.shared.windows.first {
-                let signInViewController = SignInView()
-                let navigationController = UINavigationController(rootViewController: signInViewController)
-                
-                window.rootViewController = navigationController
-                window.makeKeyAndVisible()
-                
-                UIView.transition(with: window, duration: 0.3, options: .transitionCrossDissolve, animations: {}, completion: nil)
-            }
-        }
     }
 }

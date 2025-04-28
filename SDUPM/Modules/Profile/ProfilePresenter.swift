@@ -41,6 +41,7 @@ class ProfilePresenter: ProfilePresenterProtocol {
                 
                 if success {
                     self.view?.showSuccess(message: "Profile updated successfully")
+                    // Refresh profile data
                     self.fetchProfile()
                 } else {
                     self.view?.showError(message: message ?? "Failed to update profile")
@@ -71,6 +72,16 @@ class ProfilePresenter: ProfilePresenterProtocol {
         UserDefaults.standard.removeObject(forKey: LoginView.isActive)
         UserDefaults.standard.removeObject(forKey: LoginViewModel.tokenIdentifier)
         
-        view?.navigateToLogin()
+        DispatchQueue.main.async {
+            if let window = UIApplication.shared.windows.first {
+                let signInViewController = SignInView()
+                let navigationController = UINavigationController(rootViewController: signInViewController)
+                
+                window.rootViewController = navigationController
+                window.makeKeyAndVisible()
+                
+                UIView.transition(with: window, duration: 0.3, options: .transitionCrossDissolve, animations: {}, completion: nil)
+            }
+        }
     }
 }
