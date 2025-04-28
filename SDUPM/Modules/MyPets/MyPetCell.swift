@@ -1,5 +1,3 @@
-// Путь: SDUPM/Modules/MyPets/MyPetCell.swift
-
 import UIKit
 import SnapKit
 

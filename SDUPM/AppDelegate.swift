@@ -1,10 +1,4 @@
 //
-//  AppDelegate.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 19.10.2024.
-//
-
 import UIKit
 
 @main

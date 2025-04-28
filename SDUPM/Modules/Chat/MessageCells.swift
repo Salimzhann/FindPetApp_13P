@@ -1,5 +1,3 @@
-// Путь: SDUPM/Modules/Chat/MessageCells.swift
-
 import UIKit
 import SnapKit
 

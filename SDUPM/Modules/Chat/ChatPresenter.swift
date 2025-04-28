@@ -1,5 +1,3 @@
-// Путь: SDUPM/Modules/Chat/ChatPresenter.swift
-
 import Foundation
 
 protocol ChatViewProtocol: AnyObject {

@@ -1,11 +1,3 @@
-//
-//  CreatePetViewPresenter.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 02.04.2025.
-//
-// File path: SDUPM/Modules/MyPets/Submodule/CreatePetViewPresenter.swift
-
 import UIKit
 
 protocol CreatePetViewDelegate: AnyObject {

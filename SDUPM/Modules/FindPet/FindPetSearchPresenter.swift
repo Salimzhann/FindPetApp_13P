@@ -1,5 +1,3 @@
-// Path: SDUPM/Modules/FindPet/FindPetSearchPresenter.swift
-
 import UIKit
 import CoreLocation
 

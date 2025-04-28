@@ -1,10 +1,3 @@
-//
-//  PetSearchResponse.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 15.04.2025.
-//
-
 import Foundation
 
 struct PetSearchResponse: Codable {

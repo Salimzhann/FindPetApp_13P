@@ -1,12 +1,3 @@
-//
-//  MyPetModel.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 02.04.2025.
-//
-
-// File path: SDUPM/Modules/MyPets/MyPetModel.swift
-
 import UIKit
 
 struct MyPetModel {
@@ -15,8 +6,8 @@ struct MyPetModel {
     let species: String
     let breed: String
     let age: String
-    let color: String // Добавлено новое свойство color
-    var images: [UIImage]  // Using 'var' to allow modification
+    let color: String
+    var images: [UIImage]
     let status: String
     let description: String
     let gender: String
@@ -51,7 +42,6 @@ struct MyPetModel {
         }
     }
     
-    // Add this method to create a new instance with updated images
     func withImages(_ newImages: [UIImage]) -> MyPetModel {
         return MyPetModel(
             id: self.id,
@@ -59,7 +49,7 @@ struct MyPetModel {
             species: self.species,
             breed: self.breed,
             age: self.age,
-            color: self.color, // Добавлено в метод
+            color: self.color,
             images: newImages,
             status: self.status,
             description: self.description,

@@ -1,5 +1,3 @@
-// Путь: SDUPM/Modules/MyPets/Submodule/EditPetViewPresenter.swift
-
 import UIKit
 
 class EditPetViewPresenter {

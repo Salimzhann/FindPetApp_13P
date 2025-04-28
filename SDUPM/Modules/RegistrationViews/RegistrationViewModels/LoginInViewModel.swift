@@ -1,5 +1,3 @@
-// Путь: SDUPM/Modules/RegistrationViews/RegistrationViewModels/LoginViewModel.swift
-
 import Foundation
 
 enum LoginError: Error, LocalizedError {

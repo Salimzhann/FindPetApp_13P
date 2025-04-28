@@ -1,10 +1,3 @@
-//
-//  ChatModels.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 18.04.2025.
-//
-
 import Foundation
 
 struct Chat: Codable {

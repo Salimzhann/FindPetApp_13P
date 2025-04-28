@@ -1,12 +1,3 @@
-//
-//  LoginResponse.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 19.04.2025.
-//
-
-// Путь: SDUPM/NetworkService/LoginResponse.swift
-
 import Foundation
 
 struct LoginResponse: Codable {

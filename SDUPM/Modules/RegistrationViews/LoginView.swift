@@ -1,5 +1,3 @@
-// Путь: SDUPM/Modules/RegistrationViews/LoginView.swift
-
 import UIKit
 import SnapKit
 

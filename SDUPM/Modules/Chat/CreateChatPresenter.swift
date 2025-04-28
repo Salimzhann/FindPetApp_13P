@@ -1,5 +1,3 @@
-// Путь: SDUPM/Modules/Chat/CreateChatPresenter.swift
-
 import Foundation
 
 class CreateChatPresenter {

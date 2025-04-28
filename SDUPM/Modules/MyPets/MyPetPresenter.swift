@@ -1,14 +1,3 @@
-//
-//  MyPetPresenter.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 01.04.2025.
-//
-
-// File path: SDUPM/Modules/MyPets/MyPetPresenter.swift
-
-// File path: SDUPM/Modules/MyPets/MyPetPresenter.swift
-
 import UIKit
 
 protocol IMyPetPresenter {

@@ -1,12 +1,3 @@
-//
-//  CreatePetViewController.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 01.04.2025.
-//
-
-// File path: SDUPM/Modules/MyPets/Submodule/CreatePetViewController.swift
-
 import UIKit
 import PhotosUI
 

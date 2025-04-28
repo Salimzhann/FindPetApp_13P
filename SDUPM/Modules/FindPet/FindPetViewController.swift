@@ -1,5 +1,3 @@
-// SDUPM/Modules/FindPet/FindPetViewController.swift
-
 import UIKit
 import SnapKit
 import PhotosUI

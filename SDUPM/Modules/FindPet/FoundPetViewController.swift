@@ -1,14 +1,3 @@
-//
-//  FoundPetViewController.swift
-//  SDUPM
-//
-//  Created by Manas Salimzhan on 11.04.2025.
-//
-
-// File path: SDUPM/Modules/FindPet/FoundPetViewController.swift
-
-// File path: SDUPM/Modules/FindPet/FoundPetViewController.swift
-
 import UIKit
 import SnapKit
 
