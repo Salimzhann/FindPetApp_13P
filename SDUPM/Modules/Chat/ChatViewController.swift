@@ -1,6 +1,7 @@
+// Path: SDUPM/Modules/Chat/ChatViewController.swift
+
 import UIKit
 import SnapKit
-
 
 class ChatViewController: UIViewController {
     
@@ -11,16 +12,17 @@ class ChatViewController: UIViewController {
     private var isShowingAlert = false
     private var isOtherUserOnline = false
     private var otherUserLastActive: Date?
+    private var isTemporaryChat: Bool = false
     
     // MARK: - UI Components
+    
     private let tableView: UITableView = {
         let tableView = UITableView()
-        tableView.register(OutgoingMessageCell.self, forCellReuseIdentifier: "OutgoingMessageCell")
-        tableView.register(IncomingMessageCell.self, forCellReuseIdentifier: "IncomingMessageCell")
-        tableView.separatorStyle = .none
         tableView.backgroundColor = .systemBackground
+        tableView.separatorStyle = .none
         return tableView
     }()
+    
     private let inputContainerView: UIView = {
         let view = UIView()
         view.backgroundColor = .systemBackground
@@ -30,6 +32,7 @@ class ChatViewController: UIViewController {
         view.layer.shadowRadius = 3
         return view
     }()
+    
     private let messageTextView: UITextView = {
         let textView = UITextView()
         textView.font = .systemFont(ofSize: 16)
@@ -41,6 +44,7 @@ class ChatViewController: UIViewController {
         textView.placeholder = "Сообщение..."
         return textView
     }()
+    
     private let sendButton: UIButton = {
         let button = UIButton(type: .system)
         button.setImage(UIImage(systemName: "arrow.up.circle.fill"), for: .normal)
@@ -50,6 +54,7 @@ class ChatViewController: UIViewController {
         button.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
         return button
     }()
+    
     private let typingIndicatorView: UIView = {
         let view = UIView()
         view.backgroundColor = .systemGray6
@@ -57,6 +62,7 @@ class ChatViewController: UIViewController {
         view.isHidden = true
         return view
     }()
+    
     private let typingLabel: UILabel = {
         let label = UILabel()
         label.text = "печатает..."
@@ -64,12 +70,14 @@ class ChatViewController: UIViewController {
         label.textColor = .secondaryLabel
         return label
     }()
+    
     private let activityIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .large)
         indicator.hidesWhenStopped = true
         indicator.color = .systemGreen
         return indicator
     }()
+    
     private let userStatusView: UIView = {
         let view = UIView()
         view.backgroundColor = .systemGray6
@@ -77,6 +85,7 @@ class ChatViewController: UIViewController {
         view.isHidden = true
         return view
     }()
+    
     private let userStatusLabel: UILabel = {
         let label = UILabel()
         label.font = .systemFont(ofSize: 12)
@@ -86,10 +95,12 @@ class ChatViewController: UIViewController {
     }()
     
     // MARK: - Initialization
+    
     init(chat: Chat) {
         self.chat = chat
         self.presenter = ChatPresenter(chatId: chat.id)
         super.init(nibName: nil, bundle: nil)
+        self.isTemporaryChat = (chat.id == 0)
     }
     
     required init?(coder: NSCoder) {
@@ -97,6 +108,7 @@ class ChatViewController: UIViewController {
     }
     
     // MARK: - Lifecycle
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
@@ -118,19 +130,25 @@ class ChatViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        presenter.fetchChatDetails()
-        presenter.fetchMessages()
+        if !isTemporaryChat {
+            presenter.fetchChatDetails()
+            presenter.fetchMessages()
+        }
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
-        presenter.connectToWebSocket()
+        if !isTemporaryChat {
+            presenter.connectToWebSocket()
+        }
     }
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        presenter.disconnectFromWebSocket()
+        if !isTemporaryChat {
+            presenter.disconnectFromWebSocket()
+        }
     }
     
     // MARK: - Setup
@@ -230,9 +248,13 @@ class ChatViewController: UIViewController {
     }
     
     private func setupTableView() {
-        tableView.dataSource = self
         tableView.delegate = self
+        tableView.dataSource = self
         tableView.transform = CGAffineTransform.identity
+        
+        // Fix the register method calls to use the proper format
+        tableView.register(OutgoingMessageCell.self, forCellReuseIdentifier: "OutgoingMessageCell")
+        tableView.register(IncomingMessageCell.self, forCellReuseIdentifier: "IncomingMessageCell")
         
         let backgroundImage = UIImageView()
         backgroundImage.contentMode = .scaleAspectFill
@@ -278,11 +300,60 @@ class ChatViewController: UIViewController {
     @objc private func sendButtonTapped() {
         guard let messageText = messageTextView.text, !messageText.isEmpty else { return }
         
-        presenter.sendMessage(content: messageText)
+        if isTemporaryChat {
+            sendFirstMessage(messageText)
+        } else {
+            presenter.sendMessage(content: messageText)
+        }
         
-        // Clear the input field
         messageTextView.text = ""
         updateTextViewHeight()
+    }
+    
+    private func sendFirstMessage(_ message: String) {
+        activityIndicator.startAnimating()
+        tableView.isHidden = true
+        inputContainerView.isUserInteractionEnabled = false
+        
+        let provider = NetworkServiceProvider()
+        provider.createChatWithFirstMessage(petId: chat.pet_id, message: message) { [weak self] result in
+            guard let self = self else { return }
+            
+            DispatchQueue.main.async {
+                self.activityIndicator.stopAnimating()
+                self.tableView.isHidden = false
+                self.inputContainerView.isUserInteractionEnabled = true
+                
+                switch result {
+                case .success(let newChat):
+                    self.isTemporaryChat = false
+                    
+                    let newPresenter = ChatPresenter(chatId: newChat.id)
+                    newPresenter.view = self
+                    self.presenter.disconnectFromWebSocket()
+                    
+                    self.updatePresenter(newPresenter)
+                    
+                case .failure(let error):
+                    self.showError(message: "Failed to create chat: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private func updatePresenter(_ newPresenter: ChatPresenter) {
+        self.presenter.view = nil
+        
+        // Using a property to replace the presenter instead of reflection
+        // which was causing issues
+        (self.presenter as? ChatPresenter)?.disconnectFromWebSocket()
+        
+        // Create and set a new property directly
+        objc_setAssociatedObject(self, "tempPresenter", newPresenter, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
+        // Connect to websocket and fetch messages
+        newPresenter.connectToWebSocket()
+        newPresenter.fetchMessages()
     }
     
     @objc private func keyboardWillShow(notification: Notification) {
@@ -313,7 +384,6 @@ class ChatViewController: UIViewController {
         
         let newHeight = min(max(newSize.height, 36), 100)
         
-        // Используем remakeConstraints вместо updateConstraints для messageTextView
         messageTextView.snp.remakeConstraints { make in
             make.leading.equalToSuperview().offset(16)
             make.top.equalToSuperview().offset(10)
@@ -322,14 +392,12 @@ class ChatViewController: UIViewController {
             make.height.greaterThanOrEqualTo(newHeight).priority(.high)
         }
         
-        // Обновляем высоту всего контейнера
-        let containerHeight = newHeight + 20 // 10 сверху и 10 снизу
+        let containerHeight = newHeight + 20
         
         inputContainerView.snp.updateConstraints { make in
             make.height.greaterThanOrEqualTo(containerHeight)
         }
         
-        // Обновляем UI на main thread
         DispatchQueue.main.async {
             UIView.animate(withDuration: 0.1) {
                 self.view.layoutIfNeeded()
@@ -344,14 +412,12 @@ class ChatViewController: UIViewController {
                 self.userStatusView.backgroundColor = .systemGreen.withAlphaComponent(0.2)
                 self.userStatusLabel.textColor = .systemGreen
                 
-                // Обновляем статус в навигационной панели
                 if let titleView = self.navigationItem.titleView,
                    let statusLabel = titleView.subviews.last as? UILabel {
                     statusLabel.text = "В сети"
                     statusLabel.textColor = .systemGreen
                 }
             } else if let lastActive = self.otherUserLastActive {
-                // Format the last active time
                 let formatter = RelativeDateTimeFormatter()
                 formatter.unitsStyle = .short
                 let relativeTime = formatter.localizedString(for: lastActive, relativeTo: Date())
@@ -360,7 +426,6 @@ class ChatViewController: UIViewController {
                 self.userStatusView.backgroundColor = .systemGray6
                 self.userStatusLabel.textColor = .secondaryLabel
                 
-                // Обновляем статус в навигационной панели
                 if let titleView = self.navigationItem.titleView,
                    let statusLabel = titleView.subviews.last as? UILabel {
                     statusLabel.text = statusText
@@ -373,7 +438,6 @@ class ChatViewController: UIViewController {
             
             self.userStatusView.isHidden = false
             
-            // Обновляем ширину, когда текст готов
             let labelWidth = self.userStatusLabel.intrinsicContentSize.width
             self.userStatusView.snp.remakeConstraints { make in
                 make.centerX.equalToSuperview()
@@ -384,35 +448,27 @@ class ChatViewController: UIViewController {
         }
     }
     
-    // Helper method for safely showing alerts
     private func showAlertIfPossible(title: String, message: String) {
         guard !isShowingAlert,
               let rootVC = UIApplication.shared.windows.first?.rootViewController else {
             return
         }
         
-        // Find the top view controller where we can show an alert
         var topVC = rootVC
         while let presentedVC = topVC.presentedViewController,
               !(presentedVC is UIAlertController) {
             topVC = presentedVC
         }
         
-        // If an alert is already being shown, do nothing
         if topVC.presentedViewController is UIAlertController {
             return
         }
-//        
-//        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-//        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
-//            self.isShowingAlert = false
-//        })
-//        
-//        isShowingAlert = true
-//        topVC.present(alert, animated: true)
+        
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        topVC.present(alert, animated: true)
     }
     
-    // Метод для прокрутки чата вниз к последнему сообщению
     private func scrollToBottom(animated: Bool = true) {
         guard !messages.isEmpty else { return }
         
@@ -431,7 +487,6 @@ extension ChatViewController: ChatViewProtocol {
     func updateChatInfo(_ chat: Chat) {
         title = chat.otherUserName
         
-        // Обновляем имя в навигационной панели
         if let titleView = navigationItem.titleView,
            let nameLabel = titleView.subviews[1] as? UILabel {
             nameLabel.text = chat.otherUserName
@@ -445,7 +500,6 @@ extension ChatViewController: ChatViewProtocol {
             self.tableView.reloadData()
             self.scrollToBottom(animated: false)
             
-            // Mark all unread messages as read
             for message in self.messages where !message.is_read && message.sender_id != self.currentUserId {
                 self.presenter.markMessageAsRead(messageId: message.id)
             }
@@ -453,19 +507,15 @@ extension ChatViewController: ChatViewProtocol {
     }
     
     func addMessage(_ message: ChatMessage) {
-        // Check if the message already exists
         if !messages.contains(where: { $0.id == message.id }) {
-            // Add to the end of the array for standard table view
             messages.append(message)
             
             DispatchQueue.main.async {
-                // Update UI
                 self.tableView.beginUpdates()
                 self.tableView.insertRows(at: [IndexPath(row: self.messages.count - 1, section: 0)], with: .automatic)
                 self.tableView.endUpdates()
                 self.scrollToBottom()
                 
-                // Mark message as read if it's not from the current user
                 if !message.is_read && message.sender_id != self.currentUserId {
                     self.presenter.markMessageAsRead(messageId: message.id)
                 }
@@ -482,7 +532,6 @@ extension ChatViewController: ChatViewProtocol {
     }
     
     func updateUserStatus(_ userId: Int, isOnline: Bool, lastActiveAt: Date?) {
-        // Only update if it's the other user
         let otherUserId = currentUserId == chat.user1_id ? chat.user2_id : chat.user1_id
         if userId == otherUserId {
             isOtherUserOnline = isOnline
@@ -492,12 +541,10 @@ extension ChatViewController: ChatViewProtocol {
     }
     
     func markMessageAsRead(_ messageId: Int) {
-        // Find and update the message in the array
         if let index = messages.firstIndex(where: { $0.id == messageId }) {
             messages[index].is_read = true
             
             DispatchQueue.main.async {
-                // Only refresh the specific row that changed
                 if let visibleRows = self.tableView.indexPathsForVisibleRows,
                    visibleRows.contains(IndexPath(row: index, section: 0)) {
                     self.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
@@ -538,12 +585,10 @@ extension ChatViewController: UITableViewDataSource, UITableViewDelegate {
         let message = messages[indexPath.row]
         
         if message.sender_id == currentUserId {
-            // Outgoing messages
             let cell = tableView.dequeueReusableCell(withIdentifier: "OutgoingMessageCell", for: indexPath) as! OutgoingMessageCell
             cell.configure(with: message)
             return cell
         } else {
-            // Incoming messages
             let cell = tableView.dequeueReusableCell(withIdentifier: "IncomingMessageCell", for: indexPath) as! IncomingMessageCell
             cell.configure(with: message)
             return cell
@@ -565,8 +610,9 @@ extension ChatViewController: UITextViewDelegate {
     func textViewDidChange(_ textView: UITextView) {
         updateTextViewHeight()
         
-        // Send typing notification
-        presenter.sendTypingEvent(isTyping: !textView.text.isEmpty)
+        if !isTemporaryChat {
+            presenter.sendTypingEvent(isTyping: !textView.text.isEmpty)
+        }
     }
     
     func textViewDidBeginEditing(_ textView: UITextView) {
@@ -574,7 +620,9 @@ extension ChatViewController: UITextViewDelegate {
             textView.text = ""
             textView.textColor = .label
         }
-        presenter.sendTypingEvent(isTyping: !textView.text.isEmpty)
+        if !isTemporaryChat {
+            presenter.sendTypingEvent(isTyping: !textView.text.isEmpty)
+        }
     }
     
     func textViewDidEndEditing(_ textView: UITextView) {
@@ -582,7 +630,9 @@ extension ChatViewController: UITextViewDelegate {
             textView.text = "Сообщение..."
             textView.textColor = .placeholderText
         }
-        presenter.sendTypingEvent(isTyping: false)
+        if !isTemporaryChat {
+            presenter.sendTypingEvent(isTyping: false)
+        }
     }
 }
 

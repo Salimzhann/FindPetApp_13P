@@ -1,9 +1,13 @@
+// Path: SDUPM/Modules/FindPet/PetDetailViewController.swift
+
 import UIKit
 import SnapKit
 
 class PetDetailViewController: UIViewController {
     
     private let pet: Pet
+    
+    // MARK: - UI Components
     
     private let scrollView: UIScrollView = {
         let scrollView = UIScrollView()
@@ -236,85 +240,37 @@ class PetDetailViewController: UIViewController {
     }
     
     @objc private func contactButtonTapped() {
-        // Since pet is non-optional, we don't need to use guard let here
-        let alertController = UIAlertController(
-            title: "Contact Owner",
-            message: "Would you like to contact the owner of \(pet.name)?",
-            preferredStyle: .alert
-        )
-        
-        alertController.addAction(UIAlertAction(title: "Message", style: .default, handler: { [weak self] _ in
-            // We know self.pet is valid since pet is non-optional
-            if let strongSelf = self {
-                strongSelf.showMessageInput(for: strongSelf.pet)
-            }
-        }))
-        
-        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
-        present(alertController, animated: true)
+        // Navigate directly to chat interface without confirmation dialog
+        let chatVC = createTemporaryChatVC()
+        navigationController?.pushViewController(chatVC, animated: true)
     }
     
-    private func showMessageInput(for pet: Pet) {
-        let alertController = UIAlertController(
-            title: "Send Message",
-            message: "Enter your message to the owner of \(pet.name)",
-            preferredStyle: .alert
+    private func createTemporaryChatVC() -> ChatViewController {
+        // Create a temporary chat object with the pet information
+        // This chat will be properly created when the first message is sent
+        let currentUserId = UserDefaults.standard.integer(forKey: "current_user_id")
+        
+        let temporaryChat = Chat(
+            id: 0, // Temporary ID, will be replaced when chat is created
+            pet_id: pet.id,
+            user1_id: currentUserId,
+            user2_id: pet.owner_id,
+            created_at: "",
+            updated_at: "",
+            last_message: nil,
+            unread_count: 0,
+            otherUserName: "Owner of \(pet.name)",
+            petName: pet.name
         )
         
-        alertController.addTextField { textField in
-            textField.placeholder = "Your message"
-        }
-        
-        alertController.addAction(UIAlertAction(title: "Send", style: .default, handler: { [weak self] _ in
-            guard let message = alertController.textFields?.first?.text, !message.isEmpty else {
-                let errorAlert = UIAlertController(title: "Error", message: "Please enter a message", preferredStyle: .alert)
-                errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
-                self?.present(errorAlert, animated: true)
-                return
-            }
-            
-            self?.sendMessage(to: pet, message: message)
-        }))
-        
-        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
-        present(alertController, animated: true)
-    }
-    
-    private func sendMessage(to pet: Pet, message: String) {
-        let provider = NetworkServiceProvider()
-        
-        // Show loading indicator
-        let loadingAlert = UIAlertController(title: nil, message: "Sending message...", preferredStyle: .alert)
-        let loadingIndicator = UIActivityIndicatorView(frame: CGRect(x: 10, y: 5, width: 50, height: 50))
-        loadingIndicator.hidesWhenStopped = true
-        loadingIndicator.style = .medium
-        loadingIndicator.startAnimating()
-        loadingAlert.view.addSubview(loadingIndicator)
-        present(loadingAlert, animated: true)
-        
-        provider.createChatWithFirstMessage(petId: pet.id, message: message) { [weak self] result in
-            DispatchQueue.main.async {
-                self?.dismiss(animated: true) {
-                    switch result {
-                    case .success(let chat):
-                        // Navigate to chat view with the new chat
-                        let chatVC = ChatViewController(chat: chat)
-                        self?.navigationController?.pushViewController(chatVC, animated: true)
-                    case .failure(let error):
-                        let errorAlert = UIAlertController(title: "Error", message: "Failed to send message: \(error.localizedDescription)", preferredStyle: .alert)
-                        errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self?.present(errorAlert, animated: true)
-                    }
-                }
-            }
-        }
+        return ChatViewController(chat: temporaryChat)
     }
 }
 
-// MARK: - UICollectionViewDataSource, UICollectionViewDelegateFlowLayout
-extension PetDetailViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+// MARK: - UICollectionView DataSource & Delegate
+
+extension PetDetailViewController: UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+    
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return pet.photos.count
     }
