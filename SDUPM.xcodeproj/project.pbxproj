@@ -44,6 +44,7 @@
 		045C307F2DB2D4DA007A0ED0 /* MessageCells.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C307E2DB2D4D7007A0ED0 /* MessageCells.swift */; };
 		045C30812DB2DBA6007A0ED0 /* CreateChatPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C30802DB2DBA6007A0ED0 /* CreateChatPresenter.swift */; };
 		045C30832DB30172007A0ED0 /* LoginResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 045C30822DB30172007A0ED0 /* LoginResponse.swift */; };
+		047845092DC2E3630020E024 /* PetAnnotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047845082DC2E3630020E024 /* PetAnnotationView.swift */; };
 		04A19A562DBF4B5E00FFCF00 /* EditProfileViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A19A552DBF4B5E00FFCF00 /* EditProfileViewController.swift */; };
 		04D2BA052DBC2199003241E5 /* MainPetDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D2BA042DBC2195003241E5 /* MainPetDetailViewController.swift */; };
 		04D2BA072DBC2607003241E5 /* EditPetViewPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D2BA062DBC2605003241E5 /* EditPetViewPresenter.swift */; };
@@ -101,6 +102,7 @@
 		045C307E2DB2D4D7007A0ED0 /* MessageCells.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageCells.swift; sourceTree = "<group>"; };
 		045C30802DB2DBA6007A0ED0 /* CreateChatPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateChatPresenter.swift; sourceTree = "<group>"; };
 		045C30822DB30172007A0ED0 /* LoginResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginResponse.swift; sourceTree = "<group>"; };
+		047845082DC2E3630020E024 /* PetAnnotationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetAnnotationView.swift; sourceTree = "<group>"; };
 		04A19A552DBF4B5E00FFCF00 /* EditProfileViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditProfileViewController.swift; sourceTree = "<group>"; };
 		04D2BA042DBC2195003241E5 /* MainPetDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainPetDetailViewController.swift; sourceTree = "<group>"; };
 		04D2BA062DBC2605003241E5 /* EditPetViewPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditPetViewPresenter.swift; sourceTree = "<group>"; };
@@ -353,6 +355,7 @@
 				045000392D9C10C2004EE34A /* Model */,
 				045000362D9C103F004EE34A /* Cell */,
 				040907B32DB2A11400862F6A /* PetAnnotation.swift */,
+				047845082DC2E3630020E024 /* PetAnnotationView.swift */,
 			);
 			path = Main;
 			sourceTree = "<group>";
@@ -461,6 +464,7 @@
 				19213FDA2CC4EBFD006D8BE1 /* SignInViewModel.swift in Sources */,
 				045C30762DB2CCCC007A0ED0 /* CreateChatViewController.swift in Sources */,
 				19213FB42CC3C04B006D8BE1 /* AppDelegate.swift in Sources */,
+				047845092DC2E3630020E024 /* PetAnnotationView.swift in Sources */,
 				19213FCA2CC3C2B6006D8BE1 /* LoginView.swift in Sources */,
 				19213FD02CC4DD97006D8BE1 /* ProfileView.swift in Sources */,
 				045000542D9FB545004EE34A /* PetDetailInfoModel.swift in Sources */,

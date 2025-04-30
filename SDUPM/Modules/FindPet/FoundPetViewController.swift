@@ -148,7 +148,7 @@ class FoundPetViewController: UIViewController {
         emptyStateView.addSubview(emptyStateImage)
         emptyStateImage.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalToSuperview().offset(100)
+            make.top.equalToSuperview().offset(200)
             make.width.height.equalTo(80)
         }
         

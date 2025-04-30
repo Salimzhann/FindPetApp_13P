@@ -1,5 +1,3 @@
-// Path: SDUPM/Modules/FindPet/PetDetailViewController.swift
-
 import UIKit
 import SnapKit
 
@@ -215,11 +213,6 @@ class PetDetailViewController: UIViewController {
             createInfoView(title: "DISTINCTIVE FEATURES", detail: pet.distinctive_features ?? ""),
         ]
         
-        // Add location if available
-        if let location = pet.last_seen_location {
-            infoViews.append(createInfoView(title: "LAST SEEN", detail: location))
-        }
-        
         // Add date if available
         if let lostDate = pet.lost_date {
             let dateFormatter = DateFormatter()
@@ -240,30 +233,51 @@ class PetDetailViewController: UIViewController {
     }
     
     @objc private func contactButtonTapped() {
-        // Navigate directly to chat interface without confirmation dialog
-        let chatVC = createTemporaryChatVC()
-        navigationController?.pushViewController(chatVC, animated: true)
-    }
-    
-    private func createTemporaryChatVC() -> ChatViewController {
-        // Create a temporary chat object with the pet information
-        // This chat will be properly created when the first message is sent
-        let currentUserId = UserDefaults.standard.integer(forKey: "current_user_id")
-        
-        let temporaryChat = Chat(
-            id: 0, // Temporary ID, will be replaced when chat is created
-            pet_id: pet.id,
-            user1_id: currentUserId,
-            user2_id: pet.owner_id,
-            created_at: "",
-            updated_at: "",
-            last_message: nil,
-            unread_count: 0,
-            otherUserName: "Owner of \(pet.name)",
-            petName: pet.name
+        let alertController = UIAlertController(
+            title: "Contact Owner",
+            message: "Would you like to create a new chat with the owner of \(pet.name)?",
+            preferredStyle: .alert
         )
         
-        return ChatViewController(chat: temporaryChat)
+        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        alertController.addAction(UIAlertAction(title: "Start Chat", style: .default, handler: { [weak self] _ in
+            self?.startChatWithOwner()
+        }))
+        
+        present(alertController, animated: true)
+    }
+    
+    private func startChatWithOwner() {
+        let provider = NetworkServiceProvider()
+        
+        // Show loading indicator
+        let loadingAlert = UIAlertController(title: nil, message: "Creating chat...", preferredStyle: .alert)
+        let loadingIndicator = UIActivityIndicatorView(frame: CGRect(x: 10, y: 5, width: 50, height: 50))
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.style = .medium
+        loadingIndicator.startAnimating()
+        loadingAlert.view.addSubview(loadingIndicator)
+        present(loadingAlert, animated: true)
+        
+        // Use empty message to just create the chat
+        provider.createChatWithFirstMessage(petId: pet.id, message: "Hello, I'm interested in your pet \(pet.name).") { [weak self] result in
+            DispatchQueue.main.async {
+                self?.dismiss(animated: true) {
+                    switch result {
+                    case .success(let chat):
+                        // Navigate to chat view with the new chat
+                        let chatVC = ChatViewController(chat: chat)
+                        self?.navigationController?.pushViewController(chatVC, animated: true)
+                        
+                    case .failure(let error):
+                        let errorAlert = UIAlertController(title: "Error", message: "Failed to create chat: \(error.localizedDescription)", preferredStyle: .alert)
+                        errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self?.present(errorAlert, animated: true)
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -146,7 +146,7 @@ class ConfirmEmailViewController: UIViewController {
                 switch result {
                 case .success(let message):
                     self.dismiss(animated: true) {
-                        self.showSuccessToast()
+                        self.navigationController?.pushViewController(LoginView(), animated: true)
                     }
                 case .failure(let error):
                     self.showAlert(title: "Verification Failed", message: error.localizedDescription)

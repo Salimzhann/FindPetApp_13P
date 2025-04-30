@@ -3,4 +3,82 @@
    uuid = "B71364FC-A268-451E-8C72-48955282B50F"
    type = "1"
    version = "2.0">
+   <Breakpoints>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "35154F9A-6DB4-4BB6-BF32-43F2AA26405A"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "SDUPM/Modules/Main/SubModule/MainPetDetailViewController.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "446"
+            endingLineNumber = "446"
+            landmarkName = "contactButtonTapped()"
+            landmarkType = "7">
+            <Locations>
+               <Location
+                  uuid = "35154F9A-6DB4-4BB6-BF32-43F2AA26405A - e5a08607c81b7413"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #1 @Swift.MainActor () -&gt; () in closure #1 (Swift.Result&lt;SDUPM.Chat, Swift.Error&gt;) -&gt; () in SDUPM.LostPetDetailViewController.contactButtonTapped() -&gt; ()"
+                  moduleName = "SDUPM.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/nurayaliyeva/Downloads/lost-foundforpetsios/SDUPM/Modules/Main/SubModule/MainPetDetailViewController.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "446"
+                  endingLineNumber = "446">
+               </Location>
+               <Location
+                  uuid = "35154F9A-6DB4-4BB6-BF32-43F2AA26405A - e5a08607c81b7413"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #1 @Swift.MainActor () -&gt; () in closure #1 (Swift.Result&lt;SDUPM.Chat, Swift.Error&gt;) -&gt; () in SDUPM.LostPetDetailViewController.contactButtonTapped() -&gt; ()"
+                  moduleName = "SDUPM.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/nurayaliyeva/Downloads/lost-foundforpetsios/SDUPM/Modules/Main/SubModule/MainPetDetailViewController.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "446"
+                  endingLineNumber = "446">
+               </Location>
+               <Location
+                  uuid = "35154F9A-6DB4-4BB6-BF32-43F2AA26405A - e5a08607c81b7413"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #1 @Swift.MainActor () -&gt; () in closure #1 (Swift.Result&lt;SDUPM.Chat, Swift.Error&gt;) -&gt; () in SDUPM.LostPetDetailViewController.contactButtonTapped() -&gt; ()"
+                  moduleName = "SDUPM.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/nurayaliyeva/Downloads/lost-foundforpetsios/SDUPM/Modules/Main/SubModule/MainPetDetailViewController.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "446"
+                  endingLineNumber = "446">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "8C2EB233-1A1F-4D29-BA86-DF2E375A9427"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "SDUPM/Modules/Main/SubModule/MainPetDetailViewController.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "451"
+            endingLineNumber = "451"
+            landmarkName = "contactButtonTapped()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+   </Breakpoints>
 </Bucket>

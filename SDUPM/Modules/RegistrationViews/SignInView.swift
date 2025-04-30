@@ -320,6 +320,11 @@ class SignInView: UIViewController, UITextFieldDelegate {
                         }
                         
                         self.present(confirmVC, animated: true)
+                        
+                        self.fullNameTextField.text = ""
+                        self.emailTextField.text = ""
+                        self.passwordTextField.text = ""
+                        self.phoneTextField.text = ""
                     }
                 case .failure(let error):
                     self.showAlert(title: "Error", message: error.localizedDescription)

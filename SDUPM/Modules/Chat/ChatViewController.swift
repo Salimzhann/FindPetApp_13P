@@ -1,5 +1,3 @@
-// Path: SDUPM/Modules/Chat/ChatViewController.swift
-
 import UIKit
 import SnapKit
 
@@ -122,7 +120,7 @@ class ChatViewController: UIViewController {
             currentUserId = chat.user1_id
         }
         
-        title = chat.otherUserName
+        title = chat.other_user_name
         presenter.view = self
         
         setupNavigation()
@@ -232,7 +230,7 @@ class ChatViewController: UIViewController {
         avatarView.clipsToBounds = true
         
         let nameLabel = UILabel(frame: CGRect(x: 40, y: 0, width: 160, height: 20))
-        nameLabel.text = chat.otherUserName
+        nameLabel.text = chat.other_user_name
         nameLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
         
         let statusLabel = UILabel(frame: CGRect(x: 40, y: 22, width: 160, height: 18))
@@ -252,7 +250,7 @@ class ChatViewController: UIViewController {
         tableView.dataSource = self
         tableView.transform = CGAffineTransform.identity
         
-        // Fix the register method calls to use the proper format
+        // Fixed method name - changed forCellWithReuseIdentifier to forCellReuseIdentifier
         tableView.register(OutgoingMessageCell.self, forCellReuseIdentifier: "OutgoingMessageCell")
         tableView.register(IncomingMessageCell.self, forCellReuseIdentifier: "IncomingMessageCell")
         
@@ -344,14 +342,10 @@ class ChatViewController: UIViewController {
     private func updatePresenter(_ newPresenter: ChatPresenter) {
         self.presenter.view = nil
         
-        // Using a property to replace the presenter instead of reflection
-        // which was causing issues
         (self.presenter as? ChatPresenter)?.disconnectFromWebSocket()
         
-        // Create and set a new property directly
         objc_setAssociatedObject(self, "tempPresenter", newPresenter, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         
-        // Connect to websocket and fetch messages
         newPresenter.connectToWebSocket()
         newPresenter.fetchMessages()
     }
@@ -485,11 +479,11 @@ class ChatViewController: UIViewController {
 
 extension ChatViewController: ChatViewProtocol {
     func updateChatInfo(_ chat: Chat) {
-        title = chat.otherUserName
+        title = chat.other_user_name
         
         if let titleView = navigationItem.titleView,
            let nameLabel = titleView.subviews[1] as? UILabel {
-            nameLabel.text = chat.otherUserName
+            nameLabel.text = chat.other_user_name
         }
     }
     
@@ -584,7 +578,7 @@ extension ChatViewController: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let message = messages[indexPath.row]
         
-        if message.sender_id == currentUserId {
+        if message.sender_id == message.whoid {
             let cell = tableView.dequeueReusableCell(withIdentifier: "OutgoingMessageCell", for: indexPath) as! OutgoingMessageCell
             cell.configure(with: message)
             return cell

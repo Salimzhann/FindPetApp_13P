@@ -1,3 +1,5 @@
+// Path: SDUPM/Modules/Chat/ChatListViewController.swift
+
 import UIKit
 import SnapKit
 
@@ -8,13 +10,13 @@ protocol ChatListViewProtocol: AnyObject {
     func showError(message: String)
 }
 
-
 class ChatListViewController: UIViewController, ChatListViewProtocol {
     
     private let presenter = ChatListPresenter()
     private var chats: [Chat] = []
     
     // MARK: - UI Components
+    
     private let tableView: UITableView = {
         let tableView = UITableView()
         tableView.register(ChatListCell.self, forCellReuseIdentifier: "ChatListCell")
@@ -152,6 +154,31 @@ class ChatListViewController: UIViewController, ChatListViewProtocol {
         tableView.isHidden = chats.isEmpty
     }
     
+    private func deleteChat(at indexPath: IndexPath) {
+        let chat = chats[indexPath.row]
+        
+        let alert = UIAlertController(
+            title: "Удалить чат",
+            message: "Вы уверены, что хотите удалить этот чат?",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Удалить", style: .destructive) { [weak self] _ in
+            self?.presenter.deleteChat(chatId: chat.id) { success in
+                if success {
+                    DispatchQueue.main.async {
+                        self?.chats.remove(at: indexPath.row)
+                        self?.tableView.deleteRows(at: [indexPath], with: .fade)
+                        self?.updateEmptyState()
+                    }
+                }
+            }
+        })
+        
+        present(alert, animated: true)
+    }
+    
     // MARK: - ChatListViewProtocol
     
     func setChats(_ chats: [Chat]) {
@@ -177,10 +204,6 @@ class ChatListViewController: UIViewController, ChatListViewProtocol {
     
     func showError(message: String) {
         refreshControl.endRefreshing()
-//        
-//        let alert = UIAlertController(title: "Ошибка", message: message, preferredStyle: .alert)
-//        alert.addAction(UIAlertAction(title: "OK", style: .default))
-//        present(alert, animated: true)
     }
 }
 
@@ -206,13 +229,23 @@ extension ChatListViewController: UITableViewDataSource, UITableViewDelegate {
         let chatVC = ChatViewController(chat: chats[indexPath.row])
         navigationController?.pushViewController(chatVC, animated: true)
     }
+    
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let deleteAction = UIContextualAction(style: .destructive, title: "Удалить") { [weak self] (_, _, completion) in
+            self?.deleteChat(at: indexPath)
+            completion(true)
+        }
+        deleteAction.backgroundColor = .systemRed
+        
+        return UISwipeActionsConfiguration(actions: [deleteAction])
+    }
 }
 
 // MARK: - CreateChatDelegate
 
 extension ChatListViewController: CreateChatDelegate {
     func didCreateChat(_ chat: Chat) {
-        presenter.fetchChats() // Refresh chat list to include the new chat
+        presenter.fetchChats()
     }
 }
 
@@ -230,10 +263,8 @@ class ChatListCell: UITableViewCell {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
-        imageView.backgroundColor = .systemGray6
         imageView.layer.cornerRadius = 25
-        imageView.image = UIImage(systemName: "pawprint.circle.fill")
-        imageView.tintColor = .systemGray3
+        imageView.backgroundColor = .systemGray6
         return imageView
     }()
     
@@ -320,7 +351,7 @@ class ChatListCell: UITableViewCell {
         petNameLabel.snp.makeConstraints { make in
             make.top.equalTo(userNameLabel.snp.bottom).offset(2)
             make.leading.equalTo(userNameLabel)
-            make.trailing.equalTo(userNameLabel)
+            make.trailing.equalToSuperview().inset(12)
         }
         
         lastMessageLabel.snp.makeConstraints { make in
@@ -348,8 +379,14 @@ class ChatListCell: UITableViewCell {
     }
     
     func configure(with chat: Chat) {
-        userNameLabel.text = chat.otherUserName
-        petNameLabel.text = "Питомец: \(chat.petName)"
+        userNameLabel.text = chat.other_user_name
+        
+        // Set pet name, or "Найденный питомец" if null
+        if let petName = chat.pet_name, !petName.isEmpty {
+            petNameLabel.text = "Питомец: \(petName)"
+        } else {
+            petNameLabel.text = "Найденный питомец"
+        }
         
         if let lastMessage = chat.last_message {
             lastMessageLabel.text = lastMessage.content
@@ -357,7 +394,7 @@ class ChatListCell: UITableViewCell {
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
             if let date = dateFormatter.date(from: lastMessage.created_at) {
-                // Проверяем, сегодня ли это было
+                // Check if it's today
                 let calendar = Calendar.current
                 if calendar.isDateInToday(date) {
                     dateFormatter.dateFormat = "HH:mm"
@@ -380,18 +417,47 @@ class ChatListCell: UITableViewCell {
             unreadBadge.isHidden = true
         }
         
-        // Добавим разные иконки в зависимости от типа питомца - это можно улучшить при наличии API
-        if chat.petName.lowercased().contains("кот") || chat.petName.lowercased().contains("кош") {
-            avatarImageView.image = UIImage(systemName: "cat.fill")
-        } else if chat.petName.lowercased().contains("соба") {
-            avatarImageView.image = UIImage(systemName: "dog.fill")
+        // Load pet photo if available
+        if let photoUrl = chat.pet_photo_url, let url = URL(string: photoUrl) {
+            URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
+                if let data = data, let image = UIImage(data: data) {
+                    DispatchQueue.main.async {
+                        self?.avatarImageView.image = image
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        // Pet status-based fallback icons
+                        if chat.pet_status == "lost" {
+                            self?.avatarImageView.image = UIImage(systemName: "exclamationmark.triangle.fill")
+                            self?.avatarImageView.tintColor = .systemRed
+                        } else if chat.pet_status == "found" {
+                            self?.avatarImageView.image = UIImage(systemName: "checkmark.circle.fill")
+                            self?.avatarImageView.tintColor = .systemBlue
+                        } else {
+                            self?.avatarImageView.image = UIImage(systemName: "pawprint.circle.fill")
+                            self?.avatarImageView.tintColor = .systemGray3
+                        }
+                    }
+                }
+            }.resume()
         } else {
-            avatarImageView.image = UIImage(systemName: "pawprint.circle.fill")
+            // Pet status-based fallback icons
+            if chat.pet_status == "lost" {
+                avatarImageView.image = UIImage(systemName: "exclamationmark.triangle.fill")
+                avatarImageView.tintColor = .systemRed
+            } else if chat.pet_status == "found" {
+                avatarImageView.image = UIImage(systemName: "checkmark.circle.fill")
+                avatarImageView.tintColor = .systemBlue
+            } else {
+                avatarImageView.image = UIImage(systemName: "pawprint.circle.fill")
+                avatarImageView.tintColor = .systemGray3
+            }
         }
     }
     
     override func prepareForReuse() {
         super.prepareForReuse()
+        avatarImageView.image = nil
         userNameLabel.text = nil
         petNameLabel.text = nil
         lastMessageLabel.text = nil

@@ -1390,8 +1390,8 @@ class NetworkServiceProvider {
                 
                 // Заполняем UI-данные для каждого чата
                 for i in 0..<chats.count {
-                    chats[i].otherUserName = "User \(chats[i].user2_id)"
-                    chats[i].petName = "Pet \(chats[i].pet_id)"
+                    chats[i].other_user_name = chats[i].other_user_name
+                    chats[i].pet_name = chats[i].pet_name
                 }
                 
                 DispatchQueue.main.async {
@@ -1480,8 +1480,8 @@ class NetworkServiceProvider {
                     var chat = try decoder.decode(Chat.self, from: data)
                     
                     // Добавляем информативные имена для отображения
-                    chat.otherUserName = "User \(chat.user2_id)"
-                    chat.petName = "Pet \(chat.pet_id)"
+                    chat.other_user_name = "User \(chat.user2_id)"
+                    chat.pet_name = "Pet \(chat.pet_id)"
                     
                     DispatchQueue.main.async {
                         completion(.success(chat))
@@ -1596,8 +1596,8 @@ class NetworkServiceProvider {
                 
                 // Заполняем UI-данные
                 let otherUserName = "User \(chat.user1_id == UserDefaults.standard.integer(forKey: "current_user_id") ? chat.user2_id : chat.user1_id)"
-                chat.otherUserName = otherUserName
-                chat.petName = "Pet \(chat.pet_id)"
+                chat.other_user_name = otherUserName
+                chat.pet_name = "Pet \(chat.pet_id)"
                 
                 DispatchQueue.main.async {
                     completion(.success(chat))
@@ -1846,6 +1846,7 @@ class NetworkServiceProvider {
         
         task.resume()
     }
+    
     func createChatWithFirstMessage(petId: Int, message: String, completion: @escaping (Result<Chat, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/chats/pet/\(petId)/message") else {
             DispatchQueue.main.async {
@@ -1925,6 +1926,46 @@ class NetworkServiceProvider {
                 completion(.failure(NetworkError.unknownError(error)))
             }
         }
+    }
+    // Add this method to the NetworkServiceProvider class in NetworkService.swift
+
+    func deleteChat(chatId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/chats/\(chatId)") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        let request = createAuthorizedRequest(url: url, method: "DELETE")
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.unknownError(error)))
+                }
+                return
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                }
+                return
+            }
+            
+            if (200...299).contains(httpResponse.statusCode) {
+                DispatchQueue.main.async {
+                    completion(.success(()))
+                }
+            } else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                }
+            }
+        }
+        
+        task.resume()
     }
     // MARK: - Delete Pet
     func deletePet(petId: Int, completion: @escaping (Result<Void, Error>) -> Void) {

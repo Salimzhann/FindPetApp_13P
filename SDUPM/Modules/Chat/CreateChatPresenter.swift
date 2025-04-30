@@ -14,8 +14,8 @@ class CreateChatPresenter {
                 case .success(let chat):
                     // Для лучшего отображения в UI, добавим названия
                     var enhancedChat = chat
-                    enhancedChat.otherUserName = "Пользователь \(userId)"
-                    enhancedChat.petName = "Питомец \(petId)"
+                    enhancedChat.other_user_name = "Пользователь \(userId)"
+                    enhancedChat.pet_name = "Питомец \(petId)"
                     
                     self.view?.chatCreated(enhancedChat)
                 case .failure(let error):

@@ -206,6 +206,7 @@ class ChatPresenter {
                    let chatId = json["chat_id"] as? Int,
                    let senderId = json["sender_id"] as? Int,
                    let isRead = json["is_read"] as? Bool,
+                   let whoid = json["whoid"] as? Int,
                    let createdAt = json["created_at"] as? String {
                     
                     let id = messageId is Int ? messageId : (json["id"] as? Int ?? 0)
@@ -215,6 +216,7 @@ class ChatPresenter {
                         content: content,
                         chat_id: chatId,
                         sender_id: senderId,
+                        whoid: whoid,
                         is_read: isRead,
                         created_at: createdAt
                     )

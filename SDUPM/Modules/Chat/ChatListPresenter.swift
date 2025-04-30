@@ -1,3 +1,4 @@
+// Path: SDUPM/Modules/Chat/ChatListPresenter.swift
 import Foundation
 
 class ChatListPresenter {
@@ -26,9 +27,13 @@ class ChatListPresenter {
                         let otherUserId = enhancedChats[i].user1_id == currentUserId ?
                                          enhancedChats[i].user2_id : enhancedChats[i].user1_id
                                          
-                        // Устанавливаем имя другого пользователя и питомца
-                        enhancedChats[i].otherUserName = "Пользователь \(otherUserId)"
-                        enhancedChats[i].petName = "Питомец \(enhancedChats[i].pet_id)"
+                        // Устанавливаем имя другого пользователя и питомца, если они не установлены с сервера
+                        if enhancedChats[i].other_user_name == nil {
+                            enhancedChats[i].other_user_name = "Пользователь \(otherUserId)"
+                        }
+                        if enhancedChats[i].pet_name == nil {
+                            enhancedChats[i].pet_name = "Питомец \(enhancedChats[i].pet_id)"
+                        }
                     }
                     
                     // Сортируем по дате последнего сообщения (если есть)
@@ -79,5 +84,19 @@ class ChatListPresenter {
     
     func createChat(petId: Int, userId: Int, completion: @escaping (Result<Chat, Error>) -> Void) {
         provider.createChat(petId: petId, userId: userId, completion: completion)
+    }
+    
+    func deleteChat(chatId: Int, completion: @escaping (Bool) -> Void) {
+        provider.deleteChat(chatId: chatId) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    completion(true)
+                case .failure(let error):
+                    print("Error deleting chat: \(error.localizedDescription)")
+                    completion(false)
+                }
+            }
+        }
     }
 }

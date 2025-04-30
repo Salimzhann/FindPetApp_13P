@@ -1,3 +1,5 @@
+// Path: SDUPM/Modules/Chat/ChatModels.swift
+
 import Foundation
 
 struct Chat: Codable {
@@ -9,12 +11,11 @@ struct Chat: Codable {
     let updated_at: String
     var last_message: ChatMessage?
     var unread_count: Int
+    var pet_photo_url: String?
+    var pet_name: String?
+    var pet_status: String?
+    var other_user_name: String?
     
-    // Свойства для отображения в UI - не декодируются из JSON
-    var otherUserName: String = "User"
-    var petName: String = "Pet"
-    
-    // Определение кодируемых ключей для исключения UI-свойств
     enum CodingKeys: String, CodingKey {
         case id
         case pet_id
@@ -24,6 +25,10 @@ struct Chat: Codable {
         case updated_at
         case last_message
         case unread_count
+        case pet_photo_url
+        case pet_name
+        case pet_status
+        case other_user_name
     }
 }
 
@@ -32,6 +37,7 @@ struct ChatMessage: Codable {
     let content: String
     let chat_id: Int
     let sender_id: Int
+    let whoid: Int?
     var is_read: Bool
     let created_at: String
     

@@ -407,6 +407,12 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
             let resultsVC = FoundPetViewController(searchResponse: response)
             self.navigationController?.pushViewController(resultsVC, animated: true)
         }
+        selectedImages = []
+        speciesTextField.text = ""
+        colorTextField.text = ""
+        genderTextField.text = ""
+        breedTextField.text = ""
+        photoCollectionView.reloadData()
     }
     
     func showError(message: String) {

@@ -368,19 +368,40 @@ class MainPetDetailViewController: UIViewController {
     @objc private func contactButtonTapped() {
         guard let pet = self.pet else { return }
         
-        let alertController = UIAlertController(
-            title: "Связаться с владельцем",
-            message: "Хотите связаться с владельцем питомца \(pet.name)?",
-            preferredStyle: .alert
-        )
+        // Показываем индикатор загрузки
+        activityIndicator.startAnimating()
+        contactButton.setTitle("", for: .normal)
+        contactButton.isEnabled = false
         
-        alertController.addAction(UIAlertAction(title: "Начать чат", style: .default, handler: { [weak self] _ in
-            self?.startChat(with: pet)
-        }))
-        
-        alertController.addAction(UIAlertAction(title: "Отмена", style: .cancel))
-        
-        present(alertController, animated: true)
+        // Создаем реальный чат с владельцем питомца
+        let provider = NetworkServiceProvider()
+        provider.createChat(petId: pet.id, userId: pet.owner_id) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                
+                // Скрываем индикатор загрузки
+                self.activityIndicator.stopAnimating()
+                self.contactButton.setTitle("Chat", for: .normal)
+                self.contactButton.isEnabled = true
+                
+                switch result {
+                case .success(let chat):
+                    // Переходим к просмотру чата
+                    let chatVC = ChatViewController(chat: chat)
+                    self.navigationController?.pushViewController(chatVC, animated: true)
+                    
+                case .failure(let error):
+                    // Показываем ошибку
+                    let alert = UIAlertController(
+                        title: "Error",
+                        message: "Failed to create chat: \(error.localizedDescription)",
+                        preferredStyle: .alert
+                    )
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self.present(alert, animated: true)
+                }
+            }
+        }
     }
     
     private func startChat(with pet: Pet) {

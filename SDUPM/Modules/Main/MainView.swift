@@ -1,6 +1,7 @@
 import UIKit
 import SnapKit
 import MapKit
+import CoreLocation
 
 class MainView: UIViewController, MainViewProtocol {
     
@@ -135,6 +136,9 @@ class MainView: UIViewController, MainViewProtocol {
             make.bottom.equalTo(viewModeSegmentedControl.snp.top).offset(-16)
         }
         
+        // Set the map delegate
+        mapView.delegate = self
+        
         view.addSubview(emptyView)
         emptyView.snp.makeConstraints { make in
             make.center.equalTo(collectionView)
@@ -223,18 +227,17 @@ class MainView: UIViewController, MainViewProtocol {
     private func updateMapAnnotations() {
         mapView.removeAnnotations(mapView.annotations)
         
-        var annotations: [MKPointAnnotation] = []
+        var annotations: [PetAnnotation] = []
         
         for pet in petsArray {
-            // Mock locations for demo (in a real app, use the actual location data)
-            let latitude = 43.22 + Double.random(in: -0.05...0.05)
-            let longitude = 76.85 + Double.random(in: -0.05...0.05)
+            // Use actual location data if available, otherwise use mock locations
+            // In a real app with real coordinates from the API, you would use those
+            // Almaty coordinates as base: 43.222, 76.851
+            let latitude = 43.222 + Double.random(in: -0.05...0.05)
+            let longitude = 76.851 + Double.random(in: -0.05...0.05)
             
-            let annotation = MKPointAnnotation()
-            annotation.coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-            annotation.title = pet.name
-            annotation.subtitle = pet.species
-            
+            let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+            let annotation = PetAnnotation(pet: pet, coordinate: coordinate)
             annotations.append(annotation)
         }
         
@@ -308,7 +311,7 @@ class MainView: UIViewController, MainViewProtocol {
     }
 }
 
-// MARK: - UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout
+// MARK: - UICollectionView DataSource & Delegate
 
 extension MainView: UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout {
     
@@ -329,5 +332,44 @@ extension MainView: UICollectionViewDataSource, UICollectionViewDelegate, UIColl
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         presenter.didTapDetail(id: petsArray[indexPath.item].id)
+    }
+}
+
+// MARK: - MKMapViewDelegate
+
+extension MainView: MKMapViewDelegate {
+    
+    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        // Don't customize the user location annotation
+        if annotation is MKUserLocation {
+            return nil
+        }
+        
+        // Handle our custom pet annotations
+        if let petAnnotation = annotation as? PetAnnotation {
+            let identifier = "PetAnnotation"
+            
+            var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? PetAnnotationView
+            
+            if annotationView == nil {
+                annotationView = PetAnnotationView(annotation: petAnnotation, reuseIdentifier: identifier)
+            } else {
+                annotationView?.annotation = petAnnotation
+            }
+            
+            // Configure the annotation view with pet data
+            annotationView?.configure(with: petAnnotation)
+            return annotationView
+        }
+        
+        // For any other annotations, use the default view
+        return nil
+    }
+    
+    func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+        // When a pet annotation is tapped, navigate to the pet detail screen
+        if let petAnnotation = view.annotation as? PetAnnotation {
+            presenter.didTapDetail(id: petAnnotation.pet.id)
+        }
     }
 }
