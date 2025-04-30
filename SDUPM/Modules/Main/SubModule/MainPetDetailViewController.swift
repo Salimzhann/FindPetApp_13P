@@ -447,12 +447,61 @@ class LostPetDetailViewController: UIViewController {
     }
     
     private func startChat(with pet: Pet) {
-        let chatCreator = CreateChatViewController()
-        chatCreator.delegate = self
-        chatCreator.setupWithPet(petId: pet.id, userId: pet.owner_id)
+        // Show message input dialog for first message
+        let alertController = UIAlertController(
+            title: "Send Message",
+            message: "Enter your message to the owner of \(pet.name)",
+            preferredStyle: .alert
+        )
         
-        let navController = UINavigationController(rootViewController: chatCreator)
-        present(navController, animated: true)
+        alertController.addTextField { textField in
+            textField.placeholder = "Your message"
+        }
+        
+        alertController.addAction(UIAlertAction(title: "Send", style: .default, handler: { [weak self] _ in
+            guard let message = alertController.textFields?.first?.text, !message.isEmpty else {
+                let errorAlert = UIAlertController(title: "Error", message: "Please enter a message", preferredStyle: .alert)
+                errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                self?.present(errorAlert, animated: true)
+                return
+            }
+            
+            self?.sendFirstMessage(to: pet, message: message)
+        }))
+        
+        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        present(alertController, animated: true)
+    }
+
+    private func sendFirstMessage(to pet: Pet, message: String) {
+        let provider = NetworkServiceProvider()
+        
+        // Show loading indicator
+        let loadingAlert = UIAlertController(title: nil, message: "Sending message...", preferredStyle: .alert)
+        let loadingIndicator = UIActivityIndicatorView(frame: CGRect(x: 10, y: 5, width: 50, height: 50))
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.style = .medium
+        loadingIndicator.startAnimating()
+        loadingAlert.view.addSubview(loadingIndicator)
+        present(loadingAlert, animated: true)
+        
+        provider.createChatWithFirstMessage(petId: pet.id, message: message) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.dismiss(animated: true) {
+                    switch result {
+                    case .success(let chat):
+                        // Navigate to chat view with the new chat
+                        let chatVC = ChatViewController(chat: chat)
+                        self?.navigationController?.pushViewController(chatVC, animated: true)
+                    case .failure(let error):
+                        let errorAlert = UIAlertController(title: "Error", message: "Failed to send message: \(error.localizedDescription)", preferredStyle: .alert)
+                        errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self?.present(errorAlert, animated: true)
+                    }
+                }
+            }
+        }
     }
 }
 

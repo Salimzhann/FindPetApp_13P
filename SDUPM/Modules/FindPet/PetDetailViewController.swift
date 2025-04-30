@@ -205,7 +205,7 @@ class PetDetailViewController: UIViewController {
         var infoViews = [
             createInfoView(title: "SPECIES", detail: pet.species.capitalized),
             createInfoView(title: "BREED", detail: pet.breed ?? ""),
-            createInfoView(title: "AGE", detail: "\(String(describing: pet.age)) year"),
+            createInfoView(title: "AGE", detail: "\(String(describing: pet.age ?? 0)) year"),
             createInfoView(title: "COLOR", detail: pet.color),
             createInfoView(title: "GENDER", detail: pet.gender ?? ""),
             createInfoView(title: "DISTINCTIVE FEATURES", detail: pet.distinctive_features ?? ""),
@@ -236,26 +236,80 @@ class PetDetailViewController: UIViewController {
     }
     
     @objc private func contactButtonTapped() {
-        // In a real app, this would show contact information or messaging options
+        // Since pet is non-optional, we don't need to use guard let here
         let alertController = UIAlertController(
             title: "Contact Owner",
             message: "Would you like to contact the owner of \(pet.name)?",
             preferredStyle: .alert
         )
         
-        alertController.addAction(UIAlertAction(title: "Call", style: .default, handler: { _ in
-            // Implement call functionality
-            print("Calling owner of \(self.pet.name)")
-        }))
-        
-        alertController.addAction(UIAlertAction(title: "Message", style: .default, handler: { _ in
-            // Implement messaging functionality
-            print("Messaging owner of \(self.pet.name)")
+        alertController.addAction(UIAlertAction(title: "Message", style: .default, handler: { [weak self] _ in
+            // We know self.pet is valid since pet is non-optional
+            if let strongSelf = self {
+                strongSelf.showMessageInput(for: strongSelf.pet)
+            }
         }))
         
         alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         
         present(alertController, animated: true)
+    }
+    
+    private func showMessageInput(for pet: Pet) {
+        let alertController = UIAlertController(
+            title: "Send Message",
+            message: "Enter your message to the owner of \(pet.name)",
+            preferredStyle: .alert
+        )
+        
+        alertController.addTextField { textField in
+            textField.placeholder = "Your message"
+        }
+        
+        alertController.addAction(UIAlertAction(title: "Send", style: .default, handler: { [weak self] _ in
+            guard let message = alertController.textFields?.first?.text, !message.isEmpty else {
+                let errorAlert = UIAlertController(title: "Error", message: "Please enter a message", preferredStyle: .alert)
+                errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                self?.present(errorAlert, animated: true)
+                return
+            }
+            
+            self?.sendMessage(to: pet, message: message)
+        }))
+        
+        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        present(alertController, animated: true)
+    }
+    
+    private func sendMessage(to pet: Pet, message: String) {
+        let provider = NetworkServiceProvider()
+        
+        // Show loading indicator
+        let loadingAlert = UIAlertController(title: nil, message: "Sending message...", preferredStyle: .alert)
+        let loadingIndicator = UIActivityIndicatorView(frame: CGRect(x: 10, y: 5, width: 50, height: 50))
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.style = .medium
+        loadingIndicator.startAnimating()
+        loadingAlert.view.addSubview(loadingIndicator)
+        present(loadingAlert, animated: true)
+        
+        provider.createChatWithFirstMessage(petId: pet.id, message: message) { [weak self] result in
+            DispatchQueue.main.async {
+                self?.dismiss(animated: true) {
+                    switch result {
+                    case .success(let chat):
+                        // Navigate to chat view with the new chat
+                        let chatVC = ChatViewController(chat: chat)
+                        self?.navigationController?.pushViewController(chatVC, animated: true)
+                    case .failure(let error):
+                        let errorAlert = UIAlertController(title: "Error", message: "Failed to send message: \(error.localizedDescription)", preferredStyle: .alert)
+                        errorAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self?.present(errorAlert, animated: true)
+                    }
+                }
+            }
+        }
     }
 }
 

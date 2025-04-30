@@ -1846,7 +1846,86 @@ class NetworkServiceProvider {
         
         task.resume()
     }
-
+    func createChatWithFirstMessage(petId: Int, message: String, completion: @escaping (Result<Chat, Error>) -> Void) {
+        guard let url = URL(string: "\(api)/api/v1/chats/pet/\(petId)/message") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        var request = createAuthorizedRequest(url: url, method: "POST")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Create request body with message
+        let messageData = ["message": message]
+        
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: messageData)
+            request.httpBody = jsonData
+            
+            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.unknownError(error)))
+                    }
+                    return
+                }
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                    }
+                    return
+                }
+                
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                    }
+                    return
+                }
+                
+                guard let data = data else {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.noData))
+                    }
+                    return
+                }
+                
+                do {
+                    // For debugging
+                    if let jsonString = String(data: data, encoding: .utf8) {
+                        print("Response from create chat with message: \(jsonString)")
+                    }
+                    
+                    if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let chatId = json["chat_id"] as? Int {
+                        // Fetch the complete chat details for the newly created chat
+                        self.getChat(chatId: chatId) { chatResult in
+                            DispatchQueue.main.async {
+                                completion(chatResult)
+                            }
+                        }
+                    } else {
+                        DispatchQueue.main.async {
+                            completion(.failure(NetworkError.decodingFailed(NSError(domain: "InvalidResponse", code: 0, userInfo: nil))))
+                        }
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.decodingFailed(error)))
+                    }
+                }
+            }
+            
+            task.resume()
+        } catch {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.unknownError(error)))
+            }
+        }
+    }
     // MARK: - Delete Pet
     func deletePet(petId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/pets/\(petId)") else {
