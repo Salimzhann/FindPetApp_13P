@@ -1,10 +1,8 @@
 import UIKit
 import SnapKit
 
-// Renamed to avoid conflict with existing class
 class LostPetDetailViewController: UIViewController {
     
-    // MARK: - Properties
     private let petId: Int
     private let provider = NetworkServiceProvider()
     private var pet: Pet?
@@ -26,12 +24,12 @@ class LostPetDetailViewController: UIViewController {
         layout.minimumInteritemSpacing = 0
         layout.minimumLineSpacing = 0
         
-        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
-        cv.register(LostPetPhotoCell.self, forCellWithReuseIdentifier: "LostPetPhotoCell")
-        cv.isPagingEnabled = true
-        cv.showsHorizontalScrollIndicator = false
-        cv.backgroundColor = .systemBackground
-        return cv
+        let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        collectionView.register(LostPetPhotoCell.self, forCellWithReuseIdentifier: "LostPetPhotoCell")
+        collectionView.isPagingEnabled = true
+        collectionView.showsHorizontalScrollIndicator = false
+        collectionView.backgroundColor = .systemBackground
+        return collectionView
     }()
     
     private let pageControl: UIPageControl = {
@@ -45,13 +43,12 @@ class LostPetDetailViewController: UIViewController {
     private let nameLabel: UILabel = {
         let label = UILabel()
         label.font = .systemFont(ofSize: 24, weight: .bold)
-        label.textColor = .label
         return label
     }()
     
     private let statusView: UIView = {
         let view = UIView()
-        view.layer.cornerRadius = 8
+        view.layer.cornerRadius = 4
         return view
     }()
     
@@ -59,7 +56,6 @@ class LostPetDetailViewController: UIViewController {
         let label = UILabel()
         label.font = .systemFont(ofSize: 12, weight: .bold)
         label.textColor = .white
-        label.textAlignment = .center
         return label
     }()
     
@@ -98,7 +94,6 @@ class LostPetDetailViewController: UIViewController {
     
     // MARK: - Initializers
     
-    // Renamed parameter to clearly distinguish this initializer
     init(withPetId id: Int) {
         self.petId = id
         super.init(nibName: nil, bundle: nil)
@@ -437,8 +432,8 @@ class LostPetDetailViewController: UIViewController {
             preferredStyle: .alert
         )
         
-        alertController.addAction(UIAlertAction(title: "Start Chat", style: .default, handler: { [weak self] _ in
-            self?.startChat(with: pet)
+        alertController.addAction(UIAlertAction(title: "Message", style: .default, handler: { [weak self] _ in
+            self?.showMessageInput(for: pet)
         }))
         
         alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel))
@@ -446,8 +441,7 @@ class LostPetDetailViewController: UIViewController {
         present(alertController, animated: true)
     }
     
-    private func startChat(with pet: Pet) {
-        // Show message input dialog for first message
+    private func showMessageInput(for pet: Pet) {
         let alertController = UIAlertController(
             title: "Send Message",
             message: "Enter your message to the owner of \(pet.name)",
@@ -536,17 +530,6 @@ extension LostPetDetailViewController: UICollectionViewDelegate, UICollectionVie
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         return collectionView.frame.size
-    }
-}
-
-// MARK: - Create Chat Delegate
-
-extension LostPetDetailViewController: CreateChatDelegate {
-    func didCreateChat(_ chat: Chat) {
-        dismiss(animated: true) {
-            let chatVC = ChatViewController(chat: chat)
-            self.navigationController?.pushViewController(chatVC, animated: true)
-        }
     }
 }
 
