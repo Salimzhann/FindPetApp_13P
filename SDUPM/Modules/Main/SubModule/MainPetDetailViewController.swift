@@ -70,17 +70,25 @@ class LostPetDetailViewController: UIViewController {
         stackView.alignment = .leading
         return stackView
     }()
+    private let phoneButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("Call", for: .normal)
+        button.setTitleColor(.white, for: .normal)
+        button.backgroundColor = .systemBlue
+        button.layer.cornerRadius = 12
+        button.titleLabel?.font = .systemFont(ofSize: 18, weight: .regular)
+        return button
+    }()
     
     private let contactButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("Contact Owner", for: .normal)
+        button.setTitle("Chat", for: .normal)
         button.setTitleColor(.white, for: .normal)
         button.backgroundColor = .systemGreen
         button.layer.cornerRadius = 12
         button.titleLabel?.font = .systemFont(ofSize: 18, weight: .semibold)
         return button
     }()
-    
     private let activityIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .large)
         indicator.hidesWhenStopped = true
@@ -187,11 +195,21 @@ class LostPetDetailViewController: UIViewController {
             make.leading.trailing.equalToSuperview().inset(20)
         }
         
+        contentView.addSubview(phoneButton)
+        phoneButton.snp.makeConstraints { make in
+            make.top.equalTo(infoStackView.snp.bottom).offset(30)
+            make.trailing.equalToSuperview().inset(20)
+            make.leading.equalTo(contentView.snp.centerX).offset(5)
+            make.height.equalTo(50)
+            make.bottom.equalToSuperview().inset(30)
+        }
+        
         // Contact Button
         contentView.addSubview(contactButton)
         contactButton.snp.makeConstraints { make in
             make.top.equalTo(infoStackView.snp.bottom).offset(30)
-            make.leading.trailing.equalToSuperview().inset(20)
+            make.leading.equalToSuperview().inset(20)
+            make.trailing.equalTo(contentView.snp.centerX).offset(-5)
             make.height.equalTo(50)
             make.bottom.equalToSuperview().inset(30)
         }
