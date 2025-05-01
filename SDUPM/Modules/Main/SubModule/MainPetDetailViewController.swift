@@ -427,8 +427,9 @@ class LostPetDetailViewController: UIViewController {
                 
                 switch result {
                 case .success(let chat):
-                    // Переходим к просмотру чата
-                    let chatVC = ChatViewController(chat: chat)
+                    // Переходим к просмотру чата, не показываем инфо о питомце,
+                    // так как мы перешли из экрана деталей питомца
+                    let chatVC = ChatViewController(chat: chat, showPetInfo: false)
                     self.navigationController?.pushViewController(chatVC, animated: true)
                     
                 case .failure(let error):

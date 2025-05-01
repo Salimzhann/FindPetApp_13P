@@ -226,6 +226,7 @@ extension ChatListViewController: UITableViewDataSource, UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+        // При переходе из списка чатов показываем информацию о питомце (showPetInfo = true по умолчанию)
         let chatVC = ChatViewController(chat: chats[indexPath.row])
         navigationController?.pushViewController(chatVC, animated: true)
     }
