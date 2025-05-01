@@ -14,6 +14,48 @@ class ChatViewController: UIViewController {
     
     // MARK: - UI Components
     
+    private let petInfoHeaderView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .systemBackground
+        view.layer.shadowColor = UIColor.black.cgColor
+        view.layer.shadowOpacity = 0.1
+        view.layer.shadowOffset = CGSize(width: 0, height: 2)
+        view.layer.shadowRadius = 3
+        return view
+    }()
+    
+    private let petImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
+        imageView.layer.cornerRadius = 25
+        imageView.backgroundColor = .systemGray6
+        return imageView
+    }()
+    
+    private let petNameLabel: UILabel = {
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 16, weight: .semibold)
+        return label
+    }()
+    
+    private let petStatusLabel: UILabel = {
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 12)
+        label.textColor = .secondaryLabel
+        return label
+    }()
+    
+    private let viewPetDetailsButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setTitle("View Pet Details", for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 14, weight: .medium)
+        button.backgroundColor = .systemGreen.withAlphaComponent(0.1)
+        button.setTitleColor(.systemGreen, for: .normal)
+        button.layer.cornerRadius = 12
+        return button
+    }()
+    
     private let tableView: UITableView = {
         let tableView = UITableView()
         tableView.backgroundColor = .systemBackground
@@ -39,7 +81,7 @@ class ChatViewController: UIViewController {
         textView.layer.borderColor = UIColor.systemGray4.cgColor
         textView.isScrollEnabled = false
         textView.textContainerInset = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
-        textView.placeholder = "Сообщение..."
+        textView.placeholder = "Send Message..."
         return textView
     }()
     
@@ -63,7 +105,7 @@ class ChatViewController: UIViewController {
     
     private let typingLabel: UILabel = {
         let label = UILabel()
-        label.text = "печатает..."
+        label.text = "typing..."
         label.font = .systemFont(ofSize: 12)
         label.textColor = .secondaryLabel
         return label
@@ -120,10 +162,10 @@ class ChatViewController: UIViewController {
             currentUserId = chat.user1_id
         }
         
-        title = chat.other_user_name
         presenter.view = self
         
         setupNavigation()
+        updatePetInfo()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -160,6 +202,54 @@ class ChatViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .systemBackground
         
+        // Add pet info header
+        view.addSubview(petInfoHeaderView)
+        petInfoHeaderView.addSubview(petImageView)
+        petInfoHeaderView.addSubview(petNameLabel)
+        petInfoHeaderView.addSubview(petStatusLabel)
+        petInfoHeaderView.addSubview(viewPetDetailsButton)
+        
+        petInfoHeaderView.snp.makeConstraints { make in
+            make.top.equalTo(view.safeAreaLayoutGuide).offset(-50)
+            make.leading.trailing.equalToSuperview()
+            make.height.equalTo(90)
+        }
+        
+        petImageView.snp.makeConstraints { make in
+            make.leading.equalToSuperview().offset(16)
+            make.centerY.equalToSuperview()
+            make.width.height.equalTo(50)
+        }
+        
+        petNameLabel.snp.makeConstraints { make in
+            make.leading.equalTo(petImageView.snp.trailing).offset(12)
+            make.top.equalTo(petImageView).offset(4)
+            make.trailing.equalTo(viewPetDetailsButton.snp.leading).offset(-8)
+        }
+        
+        petStatusLabel.snp.makeConstraints { make in
+            make.leading.equalTo(petNameLabel)
+            make.top.equalTo(petNameLabel.snp.bottom).offset(4)
+            make.trailing.equalTo(petNameLabel)
+        }
+        
+        viewPetDetailsButton.snp.makeConstraints { make in
+            make.trailing.equalToSuperview().offset(-16)
+            make.centerY.equalToSuperview()
+            make.width.equalTo(120)
+            make.height.equalTo(30)
+        }
+        
+        // Add separator line
+        let separatorLine = UIView()
+        separatorLine.backgroundColor = .systemGray4
+        petInfoHeaderView.addSubview(separatorLine)
+        
+        separatorLine.snp.makeConstraints { make in
+            make.leading.trailing.bottom.equalToSuperview()
+            make.height.equalTo(0.5)
+        }
+        
         view.addSubview(tableView)
         view.addSubview(inputContainerView)
         view.addSubview(activityIndicator)
@@ -174,7 +264,8 @@ class ChatViewController: UIViewController {
         userStatusView.addSubview(userStatusLabel)
         
         tableView.snp.makeConstraints { make in
-            make.top.leading.trailing.equalToSuperview()
+            make.top.equalTo(petInfoHeaderView.snp.bottom)
+            make.leading.trailing.equalToSuperview()
             make.bottom.equalTo(inputContainerView.snp.top)
         }
         
@@ -210,7 +301,7 @@ class ChatViewController: UIViewController {
         
         userStatusView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(view.safeAreaLayoutGuide).offset(4)
+            make.top.equalTo(petInfoHeaderView.snp.bottom).offset(4)
             make.height.equalTo(22)
         }
         
@@ -271,6 +362,7 @@ class ChatViewController: UIViewController {
     
     private func setupActions() {
         sendButton.addTarget(self, action: #selector(sendButtonTapped), for: .touchUpInside)
+        viewPetDetailsButton.addTarget(self, action: #selector(viewPetDetailsTapped), for: .touchUpInside)
         
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
         tapGesture.cancelsTouchesInView = false
@@ -296,6 +388,16 @@ class ChatViewController: UIViewController {
     }
     
     // MARK: - Actions
+    
+    @objc private func viewPetDetailsTapped() {
+        if isTemporaryChat {
+            return
+        }
+        
+        // Navigate to Pet Detail view
+        let detailVC = LostPetDetailViewController(withPetId: chat.pet_id)
+        navigationController?.pushViewController(detailVC, animated: true)
+    }
     
     @objc private func dismissKeyboard() {
         view.endEditing(true)
@@ -441,10 +543,77 @@ class ChatViewController: UIViewController {
             let labelWidth = self.userStatusLabel.intrinsicContentSize.width
             self.userStatusView.snp.remakeConstraints { make in
                 make.centerX.equalToSuperview()
-                make.top.equalTo(self.view.safeAreaLayoutGuide).offset(4)
+                make.top.equalTo(self.petInfoHeaderView.snp.bottom).offset(4)
                 make.height.equalTo(22)
                 make.width.equalTo(labelWidth + 24)
             }
+        }
+    }
+    
+    private func updatePetInfo() {
+        // Set pet name
+        if let petName = chat.pet_name {
+            petNameLabel.text = petName
+        } else {
+            petNameLabel.text = "Питомец #\(chat.pet_id)"
+        }
+        
+        // Set pet status
+        if let status = chat.pet_status {
+            let statusText: String
+            switch status.lowercased() {
+            case "lost":
+                statusText = "Потерян"
+                petStatusLabel.textColor = .systemRed
+            case "found":
+                statusText = "Найден"
+                petStatusLabel.textColor = .systemBlue
+            case "home":
+                statusText = "Дома"
+                petStatusLabel.textColor = .systemGreen
+            default:
+                statusText = status
+                petStatusLabel.textColor = .secondaryLabel
+            }
+            petStatusLabel.text = statusText
+        } else {
+            petStatusLabel.text = "Статус неизвестен"
+        }
+        
+        // Load pet photo if available
+        if let photoUrl = chat.pet_photo_url, let url = URL(string: photoUrl) {
+            URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
+                if let data = data, let image = UIImage(data: data) {
+                    DispatchQueue.main.async {
+                        self?.petImageView.image = image
+                    }
+                } else {
+                    DispatchQueue.main.async {
+                        self?.setPetStatusImage()
+                    }
+                }
+            }.resume()
+        } else {
+            setPetStatusImage()
+        }
+    }
+    
+    private func setPetStatusImage() {
+        if let status = chat.pet_status?.lowercased() {
+            switch status {
+            case "lost":
+                petImageView.image = UIImage(systemName: "exclamationmark.triangle.fill")
+                petImageView.tintColor = .systemRed
+            case "found":
+                petImageView.image = UIImage(systemName: "checkmark.circle.fill")
+                petImageView.tintColor = .systemBlue
+            default:
+                petImageView.image = UIImage(systemName: "pawprint.circle.fill")
+                petImageView.tintColor = .systemGray3
+            }
+        } else {
+            petImageView.image = UIImage(systemName: "pawprint.circle.fill")
+            petImageView.tintColor = .systemGray3
         }
     }
     
@@ -485,11 +654,45 @@ class ChatViewController: UIViewController {
 
 extension ChatViewController: ChatViewProtocol {
     func updateChatInfo(_ chat: Chat) {
-        title = chat.other_user_name
         
         if let titleView = navigationItem.titleView,
            let nameLabel = titleView.subviews[1] as? UILabel {
             nameLabel.text = chat.other_user_name
+        }
+        
+        // Update pet info
+        if let petName = chat.pet_name {
+            petNameLabel.text = petName
+        }
+        
+        if let petStatus = chat.pet_status {
+            let statusText: String
+            switch petStatus.lowercased() {
+            case "lost":
+                statusText = "Потерян"
+                petStatusLabel.textColor = .systemRed
+            case "found":
+                statusText = "Найден"
+                petStatusLabel.textColor = .systemBlue
+            case "home":
+                statusText = "Дома"
+                petStatusLabel.textColor = .systemGreen
+            default:
+                statusText = petStatus
+                petStatusLabel.textColor = .secondaryLabel
+            }
+            petStatusLabel.text = statusText
+        }
+        
+        // Update pet photo if available
+        if let photoUrl = chat.pet_photo_url, let url = URL(string: photoUrl) {
+            URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
+                if let data = data, let image = UIImage(data: data) {
+                    DispatchQueue.main.async {
+                        self?.petImageView.image = image
+                    }
+                }
+            }.resume()
         }
     }
     
