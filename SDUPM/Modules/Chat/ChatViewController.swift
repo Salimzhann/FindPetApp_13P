@@ -134,11 +134,17 @@ class ChatViewController: UIViewController {
         }
     }
     
+    // Добавьте этот переопределенный метод в класс ChatViewController или обновите существующий
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
         if !isTemporaryChat {
+            // Переподключаем WebSocket при каждом появлении экрана
+            presenter.disconnectFromWebSocket()
             presenter.connectToWebSocket()
+            
+            // Обновляем список сообщений
+            presenter.fetchMessages()
         }
     }
     
@@ -500,8 +506,42 @@ extension ChatViewController: ChatViewProtocol {
         }
     }
     
+    // Этот метод нужно заменить в классе ChatViewController в разделе ChatViewProtocol
     func addMessage(_ message: ChatMessage) {
-        if !messages.contains(where: { $0.id == message.id }) {
+        print("addMessage called with ID: \(message.id), content: \(message.content)")
+        
+        // Проверяем, нет ли уже сообщения с таким же ID (для реальных сообщений с сервера)
+        // Или с тем же содержимым и отправителем (для временных сообщений)
+        let duplicateIndex = messages.firstIndex { existingMessage in
+            // Сообщения с положительным ID приходят с сервера
+            if message.id > 0 && existingMessage.id > 0 {
+                return existingMessage.id == message.id
+            }
+            // Временное сообщение (отрицательный ID) и сообщение с сервера - проверяем содержимое и отправителя
+            else if message.id > 0 && existingMessage.id < 0 {
+                return existingMessage.content == message.content &&
+                       existingMessage.sender_id == message.sender_id &&
+                       abs(existingMessage.createdAtDate?.timeIntervalSince(message.createdAtDate ?? Date()) ?? 60) < 10
+            }
+            return false
+        }
+        
+        if let index = duplicateIndex {
+            // Если это дубликат, но с реальным ID с сервера, обновим временное сообщение
+            if message.id > 0 && messages[index].id < 0 {
+                print("Updating temporary message with real message from server")
+                messages[index] = message
+                
+                DispatchQueue.main.async {
+                    if let visibleRows = self.tableView.indexPathsForVisibleRows,
+                       visibleRows.contains(IndexPath(row: index, section: 0)) {
+                        self.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
+                    }
+                }
+            }
+        } else {
+            // Это новое сообщение, добавляем его
+            print("Adding new message to chat: \(message.id)")
             messages.append(message)
             
             DispatchQueue.main.async {
@@ -510,6 +550,7 @@ extension ChatViewController: ChatViewProtocol {
                 self.tableView.endUpdates()
                 self.scrollToBottom()
                 
+                // Если сообщение от собеседника и не прочитано, отмечаем как прочитанное
                 if !message.is_read && message.sender_id != self.currentUserId {
                     self.presenter.markMessageAsRead(messageId: message.id)
                 }

@@ -23,6 +23,12 @@ class ChatPresenter {
     private var reconnectTimer: Timer?
     private let reconnectInterval: TimeInterval = 5.0
     
+    // Добавляем свойство для хранения неотправленных сообщений
+    private var pendingMessages: [String] = []
+    
+    // Добавляем флаг для отслеживания активности веб-сокета
+    private var isWebSocketActive = false
+    
     init(chatId: Int) {
         self.chatId = chatId
     }
@@ -71,6 +77,26 @@ class ChatPresenter {
     }
     
     func sendMessage(content: String) {
+        // Создаем временное сообщение для немедленного отображения в UI
+        let currentUserId = UserDefaults.standard.integer(forKey: "current_user_id")
+        let currentTime = ISO8601DateFormatter().string(from: Date())
+        
+        let tempMessage = ChatMessage(
+            id: Int.random(in: -10000..<0), // Временный отрицательный ID для предотвращения конфликтов
+            content: content,
+            chat_id: chatId,
+            sender_id: currentUserId,
+            whoid: currentUserId, // Для исходящих сообщений sender_id и whoid одинаковы
+            is_read: false,
+            created_at: currentTime
+        )
+        
+        // Добавляем сообщение в UI немедленно
+        DispatchQueue.main.async {
+            self.view?.addMessage(tempMessage)
+        }
+        
+        // Отправляем сообщение через WebSocket как раньше
         let messageData: [String: Any] = [
             "message_type": "text",
             "content": content
@@ -130,13 +156,49 @@ class ChatPresenter {
         
         isConnected = true
         isConnecting = false
+        isWebSocketActive = true
         
+        // Начинаем получать сообщения
         receiveMessage()
+        
+        // Отправляем все накопившиеся сообщения
+        let messagesToSend = pendingMessages
+        pendingMessages = []
+        
+        for pendingMessage in messagesToSend {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.sendWebSocketMessage(pendingMessage)
+            }
+        }
+        
+        // Отправляем ping для поддержания соединения
+        startPinging()
+    }
+    
+    private func startPinging() {
+        // Отправка ping каждые 30 секунд для поддержания соединения
+        DispatchQueue.global().asyncAfter(deadline: .now() + 30) { [weak self] in
+            guard let self = self, self.isConnected, self.isWebSocketActive else { return }
+            
+            self.webSocketTask?.sendPing { error in
+                if let error = error {
+                    print("WebSocket ping failed: \(error.localizedDescription)")
+                    DispatchQueue.main.async {
+                        self.isConnected = false
+                        self.scheduleReconnect()
+                    }
+                } else {
+                    // Ping успешен, продолжаем пинговать
+                    self.startPinging()
+                }
+            }
+        }
     }
     
     func disconnectFromWebSocket() {
         guard isConnected, let task = webSocketTask else { return }
         
+        isWebSocketActive = false
         task.cancel(with: .normalClosure, reason: nil)
         webSocketTask = nil
         isConnected = false
@@ -153,16 +215,22 @@ class ChatPresenter {
     }
     
     private func receiveMessage() {
-        guard isConnected, let task = webSocketTask else { return }
+        guard isConnected, let task = webSocketTask, isWebSocketActive else {
+            // Если сокет не активен, не пытаемся получать сообщения
+            return
+        }
         
+        // Запрос на получение сообщения
         task.receive { [weak self] result in
-            guard let self = self else { return }
+            guard let self = self, self.isWebSocketActive else { return }
             
             switch result {
             case .success(let message):
+                // Обрабатываем полученное сообщение
                 switch message {
                 case .string(let text):
                     print("Received WebSocket message: \(text)")
+                    // Обрабатываем текстовое сообщение
                     self.handleWebSocketMessage(text)
                 case .data(let data):
                     if let text = String(data: data, encoding: .utf8) {
@@ -173,17 +241,18 @@ class ChatPresenter {
                     break
                 }
                 
-                // Продолжаем получать сообщения
+                // Сразу запрашиваем следующее сообщение
                 self.receiveMessage()
                 
             case .failure(let error):
                 print("WebSocket error: \(error.localizedDescription)")
+                
+                // Обработка ошибки WebSocket
                 DispatchQueue.main.async {
-                    // Avoid multiple notifications about the same error
                     if self.isConnected {
                         self.isConnected = false
                         
-                        // Only notify the user in case of a critical error
+                        // Только уведомляем пользователя в случае критической ошибки
                         if (error as NSError).code != URLError.cancelled.rawValue {
                             self.view?.showError(message: "Connection to chat interrupted. Reconnecting...")
                             self.scheduleReconnect()
@@ -198,6 +267,9 @@ class ChatPresenter {
         guard let data = text.data(using: .utf8) else { return }
         
         do {
+            // Выводим полученное сообщение для отладки
+            print("Processing WebSocket message: \(text)")
+            
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 
                 // Check if this is a chat message
@@ -205,11 +277,13 @@ class ChatPresenter {
                    let messageId = (json["message_id"] as? Int) ?? (json["id"] as? Int),
                    let chatId = json["chat_id"] as? Int,
                    let senderId = json["sender_id"] as? Int,
-                   let isRead = json["is_read"] as? Bool,
                    let whoid = json["whoid"] as? Int,
                    let createdAt = json["created_at"] as? String {
                     
-                    let id = messageId is Int ? messageId : (json["id"] as? Int ?? 0)
+                    let isRead = (json["is_read"] as? Bool) ?? false
+                    let id = messageId
+                    
+                    print("Parsed message: id=\(id), content=\(content), sender=\(senderId)")
                     
                     let message = ChatMessage(
                         id: id,
@@ -221,7 +295,9 @@ class ChatPresenter {
                         created_at: createdAt
                     )
                     
+                    // Отправляем сообщение в основной поток для обновления UI
                     DispatchQueue.main.async {
+                        print("Sending message to UI: \(message.id) - \(message.content)")
                         self.view?.addMessage(message)
                     }
                     return
@@ -292,8 +368,11 @@ class ChatPresenter {
     }
     
     private func sendWebSocketMessage(_ text: String) {
-        guard isConnected, let task = webSocketTask else {
-            // Try to reconnect if disconnected
+        guard isConnected, let task = webSocketTask, isWebSocketActive else {
+            // Если не подключены, добавляем сообщение в очередь и подключаемся
+            pendingMessages.append(text)
+            
+            // Пытаемся подключиться, если еще не подключаемся
             if !isConnecting {
                 connectToWebSocket()
             }
@@ -307,6 +386,7 @@ class ChatPresenter {
                 DispatchQueue.main.async {
                     if let self = self, self.isConnected {
                         self.isConnected = false
+                        self.pendingMessages.append(text) // Сохраняем сообщение для повторной отправки
                         self.scheduleReconnect()
                     }
                 }
