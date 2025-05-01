@@ -29,6 +29,7 @@ struct Pet: Codable {
     let updated_at: String
     let lost_date: String?
     let owner_id: Int
+    let owner_phone: String?
 
     var mainPhotoURL: URL? {
         if let primaryPhoto = photos.first(where: { $0.is_primary }) {

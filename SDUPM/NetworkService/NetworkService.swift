@@ -766,53 +766,76 @@ class NetworkServiceProvider {
     }
     /// Функция для обратной совместимости - получает потерянных питомцев и преобразует их для презентера
     func fetchLostPets(completion: @escaping (Result<LostPetResponse, Error>) -> Void) {
-        fetchLostPets { result in
-            switch result {
-            case .success(let apiResponse):
-                // Преобразуем APILostPetResponse в LostPetResponse
-                // Примечание: здесь используется простой мок, в реальной имплементации нужно преобразовать данные
-                let mockPets: [Pet] = apiResponse.items.compactMap { apiPet in
-                    guard let id = Int(apiPet.id) else { return nil }
-                    
-                    return Pet(
-                        id: id,
-                        name: apiPet.name,
-                        species: apiPet.species,
-                        breed: apiPet.breed,
-                        age: nil,
-                        color: "",
-                        gender: nil,
-                        distinctive_features: nil,
-                        last_seen_location: nil,
-                        photos: [
-                            PetPhoto(
-                                id: 0,
-                                pet_id: id,
-                                photo_url: apiPet.photo_url ?? "",
-                                is_primary: true,
-                                created_at: ""
-                            )
-                        ],
-                        status: apiPet.status,
-                        created_at: "",
-                        updated_at: "",
-                        lost_date: apiPet.lost_date,
-                        owner_id: 0
-                    )
+        guard let url = URL(string: "\(api)/api/v1/pets/lost") else {
+            DispatchQueue.main.async {
+                completion(.failure(NetworkError.invalidURL))
+            }
+            return
+        }
+        
+        let request = createAuthorizedRequest(url: url, method: "GET")
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.unknownError(error)))
                 }
+                return
+            }
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: 0)))
+                }
+                return
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.requestFailed(statusCode: httpResponse.statusCode)))
+                }
+                return
+            }
+            
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.noData))
+                }
+                return
+            }
+            
+            do {
+                // Декодируем массив объектов Pet напрямую, так как API возвращает массив
+                let decoder = JSONDecoder()
+                let pets = try decoder.decode([Pet].self, from: data)
                 
+                // Создаем LostPetResponse из полученного массива
                 let response = LostPetResponse(
-                    items: mockPets,
-                    total: apiResponse.total
+                    items: pets,
+                    total: pets.count
                 )
                 
-                completion(.success(response))
+                DispatchQueue.main.async {
+                    completion(.success(response))
+                }
+            } catch {
+                print("Decoding error: \(error)")
                 
-            case .failure(let error):
-                completion(.failure(error))
+                // Для отладки выводим часть полученных данных
+                if let jsonString = String(data: data, encoding: .utf8) {
+                    let preview = String(jsonString.prefix(200)) + "..."
+                    print("Response data preview: \(preview)")
+                }
+                
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.decodingFailed(error)))
+                }
             }
         }
+        
+        task.resume()
     }
+
     
     func fetchFoundPets(completion: @escaping ([Pet]?, Error?) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/pets/found") else {

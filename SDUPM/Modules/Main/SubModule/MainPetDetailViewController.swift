@@ -15,9 +15,7 @@ class LostPetDetailViewController: UIViewController {
         scrollView.showsVerticalScrollIndicator = false
         return scrollView
     }()
-    
     private let contentView = UIView()
-    
     private let photoCollectionView: UICollectionView = {
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
@@ -91,6 +89,8 @@ class LostPetDetailViewController: UIViewController {
         indicator.color = .systemGreen
         return indicator
     }()
+    
+    private var phoneNumber: String?
     
     // MARK: - Initializers
     
@@ -210,6 +210,7 @@ class LostPetDetailViewController: UIViewController {
         }
         
         contactButton.addTarget(self, action: #selector(contactButtonTapped), for: .touchUpInside)
+        phoneButton.addTarget(self, action: #selector(phoneButtonTapped), for: .touchUpInside)
         
         // Activity Indicator
         view.addSubview(activityIndicator)
@@ -248,7 +249,6 @@ class LostPetDetailViewController: UIViewController {
         guard let pet = self.pet else { return }
         
         nameLabel.text = pet.name
-        configureStatus(for: pet.status)
         loadPetImages(from: pet.photos)
         
         infoStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
@@ -256,25 +256,6 @@ class LostPetDetailViewController: UIViewController {
         
         pageControl.numberOfPages = pet.photos.count > 0 ? pet.photos.count : 1
         pageControl.currentPage = 0
-    }
-    
-    private func configureStatus(for status: String) {
-        statusLabel.text = status.uppercased()
-        
-        switch status.lowercased() {
-        case "lost":
-            statusView.backgroundColor = .systemRed
-            contactButton.backgroundColor = .systemRed
-        case "found":
-            statusView.backgroundColor = .systemBlue
-            contactButton.backgroundColor = .systemBlue
-        case "home":
-            statusView.backgroundColor = .systemGreen
-            contactButton.backgroundColor = .systemGreen
-        default:
-            statusView.backgroundColor = .systemGray
-            contactButton.backgroundColor = .systemGray
-        }
     }
     
     private func loadPetImages(from photos: [PetPhoto]) {
@@ -355,6 +336,8 @@ class LostPetDetailViewController: UIViewController {
         if let location = pet.last_seen_location, !location.isEmpty {
             details.append(("LAST SEEN LOCATION", location))
         }
+        
+        self.phoneNumber = pet.owner_phone
         
         if let lostDate = pet.lost_date, !lostDate.isEmpty {
             let dateFormatter = DateFormatter()
@@ -461,6 +444,17 @@ class LostPetDetailViewController: UIViewController {
             }
         }
     }
+    
+    @objc private func phoneButtonTapped() {
+        guard let phoneNumber = phoneNumber?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let phoneURL = URL(string: "tel://\(phoneNumber)"),
+              UIApplication.shared.canOpenURL(phoneURL) else {
+            return
+        }
+
+        UIApplication.shared.open(phoneURL, options: [:], completionHandler: nil)
+    }
+
     
     private func showMessageInput(for pet: Pet) {
         let alertController = UIAlertController(

@@ -10,7 +10,7 @@ struct Chat: Codable {
     let created_at: String
     let updated_at: String
     var last_message: ChatMessage?
-    var unread_count: Int
+    var unread_count: Int = 0 // Теперь имеет значение по умолчанию
     var pet_photo_url: String?
     var pet_name: String?
     var pet_status: String?
@@ -29,6 +29,26 @@ struct Chat: Codable {
         case pet_name
         case pet_status
         case other_user_name
+    }
+    
+    // Добавим свой инициализатор для декодера
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(Int.self, forKey: .id)
+        pet_id = try container.decode(Int.self, forKey: .pet_id)
+        user1_id = try container.decode(Int.self, forKey: .user1_id)
+        user2_id = try container.decode(Int.self, forKey: .user2_id)
+        created_at = try container.decode(String.self, forKey: .created_at)
+        updated_at = try container.decode(String.self, forKey: .updated_at)
+        
+        // Опциональные поля с ручной обработкой неудач декодирования
+        last_message = try? container.decode(ChatMessage?.self, forKey: .last_message)
+        unread_count = (try? container.decode(Int.self, forKey: .unread_count)) ?? 0
+        pet_photo_url = try? container.decode(String?.self, forKey: .pet_photo_url)
+        pet_name = try? container.decode(String?.self, forKey: .pet_name)
+        pet_status = try? container.decode(String?.self, forKey: .pet_status)
+        other_user_name = try? container.decode(String?.self, forKey: .other_user_name)
     }
 }
 
@@ -101,3 +121,4 @@ struct WebSocketStatusResponse: Codable {
     let last_active_at: String?
     let message_id: Int?
 }
+
