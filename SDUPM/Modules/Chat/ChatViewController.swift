@@ -177,17 +177,14 @@ class ChatViewController: UIViewController {
         }
     }
     
-    // Добавьте этот переопределенный метод в класс ChatViewController или обновите существующий
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
         if !isTemporaryChat {
+            print("⭐️ Reconnecting WebSocket in viewDidAppear")
             // Переподключаем WebSocket при каждом появлении экрана
             presenter.disconnectFromWebSocket()
             presenter.connectToWebSocket()
-            
-            // Обновляем список сообщений
-            presenter.fetchMessages()
         }
     }
     
@@ -738,55 +735,46 @@ extension ChatViewController: ChatViewProtocol {
     }
     
     func addMessage(_ message: ChatMessage) {
-        print("addMessage called with ID: \(message.id), content: \(message.content)")
+        print("addMessage called with ID: \(message.id), content: \(message.content), sender: \(message.sender_id), current: \(currentUserId)")
         
-        // Проверяем, нет ли уже сообщения с таким же ID (для реальных сообщений с сервера)
-        // Или с тем же содержимым и отправителем (для временных сообщений)
-        let duplicateIndex = messages.firstIndex { existingMessage in
-            // Сообщения с положительным ID приходят с сервера
-            if message.id > 0 && existingMessage.id > 0 {
-                return existingMessage.id == message.id
-            }
-            // Временное сообщение (отрицательный ID) и сообщение с сервера - проверяем содержимое и отправителя
-            else if message.id > 0 && existingMessage.id < 0 {
-                return existingMessage.content == message.content &&
-                       existingMessage.sender_id == message.sender_id &&
-                       abs(existingMessage.createdAtDate?.timeIntervalSince(message.createdAtDate ?? Date()) ?? 60) < 10
-            }
-            return false
+        // Проверяем, является ли это дубликатом существующего сообщения
+        if messages.contains(where: { $0.id == message.id && message.id > 0 }) {
+            print("Ignoring duplicate message with ID: \(message.id)")
+            return
         }
         
-        if let index = duplicateIndex {
-            // Если это дубликат, но с реальным ID с сервера, обновим временное сообщение
-            if message.id > 0 && messages[index].id < 0 {
-                print("Updating temporary message with real message from server")
-                messages[index] = message
-                
-                DispatchQueue.main.async {
-                    if let visibleRows = self.tableView.indexPathsForVisibleRows,
-                       visibleRows.contains(IndexPath(row: index, section: 0)) {
-                        self.tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
-                    }
-                }
-            }
-        } else {
-            // Это новое сообщение, добавляем его
-            print("Adding new message to chat: \(message.id)")
-            messages.append(message)
+        // Проверяем наличие дубликата по содержимому
+        if messages.contains(where: { $0.content == message.content && $0.id != message.id }) {
+            print("Ignoring message with duplicate content: \(message.content)")
+            return
+        }
+        
+        // Если это сообщение от текущего пользователя, убедимся, что sender_id установлен правильно
+        var updatedMessage = message
+        if message.id < 0 || (message.content.count > 0 && messages.contains(where: {
+            $0.id < 0 && $0.content == message.content
+        })) {
+            // Для временных сообщений или серверных сообщений, заменяющих временные,
+            // устанавливаем sender_id как currentUserId
+            updatedMessage.sender_id = currentUserId
+        }
+        
+        // Добавляем сообщение в массив
+        messages.append(updatedMessage)
+        
+        DispatchQueue.main.async {
+            self.tableView.beginUpdates()
+            self.tableView.insertRows(at: [IndexPath(row: self.messages.count - 1, section: 0)], with: .automatic)
+            self.tableView.endUpdates()
+            self.scrollToBottom()
             
-            DispatchQueue.main.async {
-                self.tableView.beginUpdates()
-                self.tableView.insertRows(at: [IndexPath(row: self.messages.count - 1, section: 0)], with: .automatic)
-                self.tableView.endUpdates()
-                self.scrollToBottom()
-                
-                // Если сообщение от собеседника и не прочитано, отмечаем как прочитанное
-                if !message.is_read && message.sender_id != self.currentUserId {
-                    self.presenter.markMessageAsRead(messageId: message.id)
-                }
+            // Отмечаем входящие сообщения как прочитанные
+            if !message.is_read && message.sender_id != self.currentUserId {
+                self.presenter.markMessageAsRead(messageId: message.id)
             }
         }
     }
+    
     
     func showTypingIndicator(_ isTyping: Bool) {
         DispatchQueue.main.async {
@@ -849,11 +837,16 @@ extension ChatViewController: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let message = messages[indexPath.row]
         
-        if message.sender_id == message.whoid {
+        // Проверка, является ли сообщение исходящим (от текущего пользователя)
+        // или временным сообщением с отрицательным ID
+        let isOutgoing = message.id < 0 || message.sender_id == currentUserId
+        
+        if isOutgoing {
             let cell = tableView.dequeueReusableCell(withIdentifier: "OutgoingMessageCell", for: indexPath) as! OutgoingMessageCell
             cell.configure(with: message)
             return cell
         } else {
+            // Если не исходящее, значит входящее
             let cell = tableView.dequeueReusableCell(withIdentifier: "IncomingMessageCell", for: indexPath) as! IncomingMessageCell
             cell.configure(with: message)
             return cell

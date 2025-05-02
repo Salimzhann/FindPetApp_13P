@@ -56,7 +56,7 @@ struct ChatMessage: Codable {
     let id: Int
     let content: String
     let chat_id: Int
-    let sender_id: Int
+    var sender_id: Int
     let whoid: Int?
     var is_read: Bool
     let created_at: String

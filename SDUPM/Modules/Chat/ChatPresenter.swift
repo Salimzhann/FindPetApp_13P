@@ -220,6 +220,8 @@ class ChatPresenter {
             return
         }
         
+        print("Waiting for WebSocket messages...")
+        
         // Запрос на получение сообщения
         task.receive { [weak self] result in
             guard let self = self, self.isWebSocketActive else { return }
@@ -295,7 +297,7 @@ class ChatPresenter {
                         created_at: createdAt
                     )
                     
-                    // Отправляем сообщение в основной поток для обновления UI
+                    // Всегда отправляем сообщение в основной поток для обновления UI
                     DispatchQueue.main.async {
                         print("Sending message to UI: \(message.id) - \(message.content)")
                         self.view?.addMessage(message)
@@ -361,9 +363,70 @@ class ChatPresenter {
                     print("System message: \(message)")
                     return
                 }
+                
+                // Если не удалось распознать формат сообщения, проверяем наличие ключевых полей для сообщения чата
+                if json["content"] != nil || json["message"] != nil {
+                    print("Trying alternative message format parsing...")
+                    let content = (json["content"] as? String) ?? (json["message"] as? String) ?? ""
+                    let messageId = (json["message_id"] as? Int) ?? (json["id"] as? Int) ?? Int.random(in: 10000...99999)
+                    let chatId = (json["chat_id"] as? Int) ?? self.chatId
+                    let senderId = (json["sender_id"] as? Int) ?? (json["user_id"] as? Int) ?? 0
+                    
+                    // Получаем текущий ID пользователя
+                    let currentUserId = UserDefaults.standard.integer(forKey: "current_user_id")
+                    let whoid = senderId
+                    
+                    // Используем текущее время в качестве запасного варианта
+                    let dateFormatter = DateFormatter()
+                    dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+                    let createdAt = (json["created_at"] as? String) ?? dateFormatter.string(from: Date())
+                    let isRead = (json["is_read"] as? Bool) ?? false
+                    
+                    let message = ChatMessage(
+                        id: messageId,
+                        content: content,
+                        chat_id: chatId,
+                        sender_id: senderId,
+                        whoid: whoid,
+                        is_read: isRead,
+                        created_at: createdAt
+                    )
+                    
+                    DispatchQueue.main.async {
+                        print("Sending alternative parsed message to UI: \(message.id) - \(message.content)")
+                        self.view?.addMessage(message)
+                    }
+                }
             }
         } catch {
             print("Failed to parse WebSocket message: \(error)")
+            
+            // Попытка обработать сообщение как простой текст
+            if text.contains("\"content\"") || text.contains("\"message\"") {
+                print("Attempting to process as plain text message...")
+                
+                // Получаем текущий ID пользователя
+                let currentUserId = UserDefaults.standard.integer(forKey: "current_user_id")
+                
+                // Создаем временное сообщение с минимальной информацией
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+                
+                let message = ChatMessage(
+                    id: Int.random(in: 10000...99999),
+                    content: "Новое сообщение получено. Пожалуйста, обновите чат.",
+                    chat_id: self.chatId,
+                    sender_id: 0, // Неизвестный отправитель
+                    whoid: 0,
+                    is_read: false,
+                    created_at: dateFormatter.string(from: Date())
+                )
+                
+                DispatchQueue.main.async {
+                    print("Sending fallback message to UI")
+                    self.view?.addMessage(message)
+                }
+            }
         }
     }
     
