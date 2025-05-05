@@ -32,7 +32,7 @@ CocoaPods (for dependency management)
 Installation
 
 Clone the repository
-bashgit clone https://github.com/yourusername/SDUPM.git
+bashgit clone https://github.com/Salimzhann/SDUPM.git
 
 Install dependencies
 bashcd SDUPM
