@@ -12,7 +12,7 @@ struct LostPet: Codable {
     let gender: String?
     let species: String
     let imageUrl: String?
-    let breed: String? 
+    let breed: String?
     
     init(from pet: Pet) {
         self.id = pet.id
