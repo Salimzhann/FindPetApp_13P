@@ -350,10 +350,7 @@ class LostPetDetailViewController: UIViewController {
         }
         
         for (index, detail) in details.enumerated() {
-            if index > 0 {
-                infoStackView.addArrangedSubview(makeSeparator())
-            }
-            
+            infoStackView.addArrangedSubview(makeSeparator())
             infoStackView.addArrangedSubview(createInfoView(title: detail.title, detail: detail.value))
         }
     }
@@ -389,10 +386,14 @@ class LostPetDetailViewController: UIViewController {
     
     private func makeSeparator() -> UIView {
         let view = UIView()
-        view.backgroundColor = .systemGray4
+        view.backgroundColor = .separator
+        
+        infoStackView.addSubview(view)
         view.snp.makeConstraints { make in
-            make.height.equalTo(1)
+            make.leading.trailing.equalToSuperview()
+            make.height.equalTo(2)
         }
+        
         return view
     }
     

@@ -625,6 +625,7 @@
 				DEVELOPMENT_TEAM = 94CHBXCXT8;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SDUPM/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PetFinder;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to help find lost pets near you.\n";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -636,7 +637,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = LostPets;
+				PRODUCT_BUNDLE_IDENTIFIER = FindPet;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -660,6 +661,7 @@
 				DEVELOPMENT_TEAM = 94CHBXCXT8;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = SDUPM/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PetFinder;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to help find lost pets near you.\n";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -671,7 +673,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = LostPets;
+				PRODUCT_BUNDLE_IDENTIFIER = FindPet;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

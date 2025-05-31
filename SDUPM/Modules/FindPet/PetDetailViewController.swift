@@ -69,8 +69,12 @@ class PetDetailViewController: UIViewController {
         detailLabel.font = UIFont.systemFont(ofSize: 16, weight: .regular)
         detailLabel.numberOfLines = 0
         
+        let separator = UIView()
+        separator.backgroundColor = .red
+        
         containerView.addSubview(titleLabel)
         containerView.addSubview(detailLabel)
+        containerView.addSubview(separator)
         
         titleLabel.snp.makeConstraints { make in
             make.top.leading.equalToSuperview()
@@ -79,6 +83,12 @@ class PetDetailViewController: UIViewController {
         detailLabel.snp.makeConstraints { make in
             make.top.equalTo(titleLabel.snp.bottom).offset(4)
             make.leading.trailing.bottom.equalToSuperview()
+        }
+        
+        separator.snp.makeConstraints { make in
+            make.bottom.equalTo(detailLabel)
+            make.leading.trailing.equalToSuperview().inset(20)
+            make.height.equalTo(2)
         }
         
         return containerView
@@ -225,7 +235,9 @@ class PetDetailViewController: UIViewController {
         }
         
         // Add all info views to stack
-        infoViews.forEach { infoStackView.addArrangedSubview($0) }
+        infoViews.forEach {
+            infoStackView.addArrangedSubview($0)
+        }
         
         // Configure page control
         pageControl.numberOfPages = pet.photos.count
