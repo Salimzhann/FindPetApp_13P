@@ -17,11 +17,11 @@ struct Pet: Codable {
     let id: Int
     let name: String
     let species: String
-    let breed: String?
-    let age: Int?
+    let breed: String?  // Optional if it might be missing
+    let age: Int?       // Optional if it might be missing
     let color: String
-    let gender: String?
-    let distinctive_features: String?
+    let gender: String?  // Optional if it might be missing
+    let distinctive_features: String?  // Optional if it might be missing
     let last_seen_location: String?
     let photos: [PetPhoto]
     let status: String
@@ -30,8 +30,6 @@ struct Pet: Codable {
     let lost_date: String?
     let owner_id: Int
     let owner_phone: String?
-    let coordX: String?  // Добавлено
-    let coordY: String?  // Добавлено
 
     var mainPhotoURL: URL? {
         if let primaryPhoto = photos.first(where: { $0.is_primary }) {
