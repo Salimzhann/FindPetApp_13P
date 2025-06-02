@@ -228,22 +228,59 @@ class MainView: UIViewController, MainViewProtocol {
         mapView.removeAnnotations(mapView.annotations)
         
         var annotations: [PetAnnotation] = []
+        var validCoordinates: [CLLocationCoordinate2D] = []
         
         for pet in petsArray {
-            // Use actual location data if available, otherwise use mock locations
-            // In a real app with real coordinates from the API, you would use those
-            // Almaty coordinates as base: 43.222, 76.851
-            let latitude = 43.222 + Double.random(in: -0.05...0.05)
-            let longitude = 76.851 + Double.random(in: -0.05...0.05)
-            
-            let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-            let annotation = PetAnnotation(pet: pet, coordinate: coordinate)
-            annotations.append(annotation)
+            // Используем реальные координаты из данных бэкенда
+            if let coordinate = pet.coordinate {
+                let annotation = PetAnnotation(pet: pet, coordinate: coordinate)
+                annotations.append(annotation)
+                validCoordinates.append(coordinate)
+            } else {
+                // Fallback на дефолтные координаты Алматы, если координаты отсутствуют
+                let latitude = 43.222
+                let longitude = 76.851
+                let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+                let annotation = PetAnnotation(pet: pet, coordinate: coordinate)
+                annotations.append(annotation)
+            }
         }
         
         mapView.addAnnotations(annotations)
         
-        if let firstAnnotation = annotations.first {
+        // Центрируем карту на всех аннотациях
+        if !validCoordinates.isEmpty {
+            // Вычисляем регион, который покрывает все точки
+            var minLat = validCoordinates[0].latitude
+            var maxLat = validCoordinates[0].latitude
+            var minLon = validCoordinates[0].longitude
+            var maxLon = validCoordinates[0].longitude
+            
+            for coordinate in validCoordinates {
+                minLat = min(minLat, coordinate.latitude)
+                maxLat = max(maxLat, coordinate.latitude)
+                minLon = min(minLon, coordinate.longitude)
+                maxLon = max(maxLon, coordinate.longitude)
+            }
+            
+            let centerLat = (minLat + maxLat) / 2
+            let centerLon = (minLon + maxLon) / 2
+            let spanLat = (maxLat - minLat) * 1.2 // Добавляем 20% отступа
+            let spanLon = (maxLon - minLon) * 1.2
+            
+            // Минимальный размер региона
+            let minSpan = 0.01
+            
+            let region = MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: centerLat, longitude: centerLon),
+                span: MKCoordinateSpan(
+                    latitudeDelta: max(spanLat, minSpan),
+                    longitudeDelta: max(spanLon, minSpan)
+                )
+            )
+            mapView.setRegion(region, animated: true)
+        } else if let firstAnnotation = annotations.first {
+            // Если нет валидных координат, используем первую аннотацию
             let region = MKCoordinateRegion(
                 center: firstAnnotation.coordinate,
                 span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)

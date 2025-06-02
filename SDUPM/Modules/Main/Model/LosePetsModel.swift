@@ -1,36 +1,63 @@
 import Foundation
+import CoreLocation
 
 struct LostPetResponse: Codable {
     let items: [Pet]
     let total: Int?
 }
 
-struct LostPet: Codable {
+struct LostPet {
     let id: Int
     let name: String
-    let age: Int?
-    let gender: String?
     let species: String
-    let imageUrl: String?
     let breed: String?
+    let age: Int?
+    let color: String
+    let gender: String?
+    let distinctive_features: String?
+    let last_seen_location: String?
+    let photos: [PetPhoto]
+    let status: String
+    let created_at: String
+    let updated_at: String
+    let lost_date: String?
+    let imageUrl: String?
+    let owner_id: Int
+    let owner_phone: String?
+    let coordX: String?  // Добавлено
+    let coordY: String?  // Добавлено
     
+    // Инициализатор из Pet
     init(from pet: Pet) {
         self.id = pet.id
-        self.breed = pet.breed
         self.name = pet.name
-        self.age = pet.age
-        self.gender = pet.gender
         self.species = pet.species
+        self.breed = pet.breed
+        self.age = pet.age
+        self.color = pet.color
+        self.gender = pet.gender
+        self.distinctive_features = pet.distinctive_features
+        self.last_seen_location = pet.last_seen_location
+        self.photos = pet.photos
+        self.status = pet.status
+        self.created_at = pet.created_at
+        self.updated_at = pet.updated_at
+        self.lost_date = pet.lost_date
+        self.owner_id = pet.owner_id
+        self.owner_phone = pet.owner_phone
+        self.coordX = pet.coordX  // Добавлено
+        self.coordY = pet.coordY  // Добавлено
         self.imageUrl = pet.photos.first(where: { $0.is_primary })?.photo_url ?? pet.photos.first?.photo_url
     }
     
-    init(id: Int, name: String, age: Int?, gender: String?, species: String, imageUrl: String?, breed: String) {
-        self.id = id
-        self.name = name
-        self.age = age
-        self.gender = gender
-        self.species = species
-        self.imageUrl = imageUrl
-        self.breed = breed
+    // Вычисляемое свойство для получения координат
+    var coordinate: CLLocationCoordinate2D? {
+        guard let coordXString = coordX,
+              let coordYString = coordY,
+              let latitude = Double(coordXString),
+              let longitude = Double(coordYString) else {
+            return nil
+        }
+        return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
 }

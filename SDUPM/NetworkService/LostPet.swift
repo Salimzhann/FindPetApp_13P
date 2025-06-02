@@ -19,22 +19,63 @@ struct APILostPet: Codable {
     let status: String
     let lost_date: String?
     
-    // Вычисляемое свойство для удобства
     var mainPhotoURL: URL? {
         guard let photoUrlString = photo_url else { return nil }
         return URL(string: photoUrlString)
     }
     
-    // Конвертация API модели в UI модель
-    func toUIModel() -> LostPet {
-        return LostPet(
+    // Конвертация APILostPet в Pet
+    func toPet() -> Pet {
+        var photos: [PetPhoto] = []
+        if let photoUrl = photo_url {
+            photos = [PetPhoto(
+                id: 0,
+                pet_id: Int(id) ?? 0,
+                photo_url: photoUrl,
+                is_primary: true,
+                created_at: Date().ISO8601Format()
+            )]
+        }
+        
+        return Pet(
             id: Int(id) ?? 0,
             name: name,
-            age: nil, // API не предоставляет возраст
-            gender: nil, // API не предоставляет пол
             species: species,
-            imageUrl: photo_url,
-            breed: String(breed ?? "")
+            breed: breed,
+            age: nil,
+            color: "",
+            gender: nil,
+            distinctive_features: nil,
+            last_seen_location: nil,
+            photos: photos,
+            status: status,
+            created_at: Date().ISO8601Format(),
+            updated_at: Date().ISO8601Format(),
+            lost_date: lost_date,
+            owner_id: 0,
+            owner_phone: nil,
+            coordX: nil,
+            coordY: nil
         )
+    }
+    
+    func toUIModel() -> LostPet {
+        return LostPet(from: toPet())
+    }
+}
+
+// Альтернативный вариант - добавить инициализатор в LostPet
+extension LostPet {
+    // Инициализатор напрямую из APILostPet
+    init(from apiPet: APILostPet) {
+        let pet = apiPet.toPet()
+        self.init(from: pet)
+    }
+}
+
+// Тогда в APILostPet можно будет использовать:
+extension APILostPet {
+    func toUIModelAlternative() -> LostPet {
+        return LostPet(from: self)
     }
 }
