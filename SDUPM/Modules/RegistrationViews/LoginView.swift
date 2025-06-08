@@ -42,6 +42,52 @@ class LoginView: UIViewController {
         return label
     }()
     
+    private let errorView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .systemGreen
+        view.isHidden = true
+        view.layer.cornerRadius = 16
+        
+        let titleLabel: UILabel = {
+            let label = UILabel()
+            label.textColor = .white
+            label.text = "Error!"
+            label.textAlignment = .center
+            label.font = UIFont.systemFont(ofSize: 20, weight: .bold)
+            return label
+        }()
+        
+        let descriptionLabel: UILabel = {
+            let label = UILabel()
+            label.textColor = .white
+            label.text = "Incorrect Login or Password."
+            label.textAlignment = .center
+            label.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
+            return label
+        }()
+        
+        view.addSubview(titleLabel)
+        titleLabel.snp.makeConstraints { make in
+            make.top.equalToSuperview().inset(20)
+            make.centerX.equalToSuperview()
+        }
+        
+        view.addSubview(descriptionLabel)
+        descriptionLabel.snp.makeConstraints { make in
+            make.top.equalTo(titleLabel.snp.bottom)
+            make.leading.bottom.trailing.equalToSuperview().inset(20)
+        }
+        
+        return view
+    }()
+    
+    private lazy var stackView: UIStackView = {
+        let stackView = UIStackView(arrangedSubviews: [titleLabel, errorView])
+        stackView.axis = .vertical
+        stackView.spacing = 10
+        return stackView
+    }()
+    
     private let passwordTextField: UITextField = {
         let textField = UITextField()
         textField.placeholder = "Your Password"
@@ -55,7 +101,7 @@ class LoginView: UIViewController {
         let button = UIButton(type: .system)
         button.setTitle("Log in", for: .normal)
         button.setTitleColor(.white, for: .normal)
-        button.backgroundColor = .systemGreen
+        button.backgroundColor = .black
         button.layer.cornerRadius = 12
         button.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
         return button
@@ -103,7 +149,6 @@ class LoginView: UIViewController {
         view.backgroundColor = .systemBackground
         
         // Add UI components
-        view.addSubview(titleLabel)
         view.addSubview(emailLabel)
         view.addSubview(emailTextField)
         view.addSubview(passwordLabel)
@@ -111,18 +156,19 @@ class LoginView: UIViewController {
         view.addSubview(loginButton)
         view.addSubview(signUpLabel)
         view.addSubview(signUpButton)
+        view.addSubview(stackView)
         
         // Add activity indicator to login button
         loginButton.addSubview(activityIndicator)
         
         // Constraints
-        titleLabel.snp.makeConstraints { make in
+        stackView.snp.makeConstraints { make in
             make.top.equalTo(view.safeAreaLayoutGuide).offset(40)
-            make.leading.equalToSuperview().offset(20)
+            make.leading.trailing.equalToSuperview().inset(20)
         }
         
         emailLabel.snp.makeConstraints { make in
-            make.top.equalTo(titleLabel.snp.bottom).offset(40)
+            make.top.equalTo(stackView.snp.bottom).offset(40)
             make.leading.equalToSuperview().offset(20)
         }
         
@@ -196,16 +242,12 @@ class LoginView: UIViewController {
     // MARK: - Actions
     
     @objc private func loginButtonTapped() {
-        guard let email = emailTextField.text, !email.isEmpty else {
-            showAlert(title: "Error", message: "Please enter your email")
+        guard let email = emailTextField.text, !email.isEmpty, let password = passwordTextField.text, !password.isEmpty else {
+            errorView.isHidden = false
             return
         }
         
-        guard let password = passwordTextField.text, !password.isEmpty else {
-            showAlert(title: "Error", message: "Please enter your password")
-            return
-        }
-        
+        errorView.isHidden = true
         showLoadingState(true)
         
         viewModel.login(email: email, password: password) { [weak self] result in
@@ -214,9 +256,10 @@ class LoginView: UIViewController {
                 
                 switch result {
                 case .success:
+                    self?.errorView.isHidden = true
                     self?.navigateToMainScreen()
                 case .failure(let error):
-                    self?.showAlert(title: "Login Failed", message: error.localizedDescription)
+                    self?.errorView.isHidden = false
                 }
             }
         }

@@ -30,6 +30,20 @@ class MainView: UIViewController, MainViewProtocol {
         return cv
     }()
     
+    private let refreshControl: UIRefreshControl = {
+        let refreshControl = UIRefreshControl()
+        refreshControl.tintColor = .systemGreen
+        
+        // Add custom text
+        let attributes = [NSAttributedString.Key.foregroundColor: UIColor.systemGreen]
+        refreshControl.attributedTitle = NSAttributedString(
+            string: "Pull to refresh pets",
+            attributes: attributes
+        )
+        
+        return refreshControl
+    }()
+    
     private let activityIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .large)
         indicator.hidesWhenStopped = true
@@ -129,6 +143,10 @@ class MainView: UIViewController, MainViewProtocol {
             make.bottom.equalTo(viewModeSegmentedControl.snp.top).offset(-16)
         }
         
+        // Add refresh control to collection view
+        collectionView.refreshControl = refreshControl
+        refreshControl.addTarget(self, action: #selector(handleRefresh), for: .valueChanged)
+        
         view.addSubview(mapView)
         mapView.snp.makeConstraints { make in
             make.top.equalTo(segmentedControl.snp.bottom).offset(16)
@@ -209,6 +227,15 @@ class MainView: UIViewController, MainViewProtocol {
             collectionView.isHidden = true
             isMapViewActive = true
             updateMapAnnotations()
+        }
+    }
+    
+    @objc private func handleRefresh() {
+        // Fetch data based on current segment selection
+        if segmentedControl.selectedSegmentIndex == 0 {
+            fetchLostPets()
+        } else {
+            fetchFoundPets()
         }
     }
     
@@ -320,6 +347,9 @@ class MainView: UIViewController, MainViewProtocol {
         activityIndicator.stopAnimating()
         errorLabel.isHidden = true
         
+        // End refresh control animation
+        refreshControl.endRefreshing()
+        
         if petsArray.isEmpty {
             emptyView.isHidden = false
             collectionView.isHidden = true
@@ -337,6 +367,9 @@ class MainView: UIViewController, MainViewProtocol {
         emptyView.isHidden = true
         collectionView.isHidden = true
         mapView.isHidden = true
+        
+        // End refresh control animation on error
+        refreshControl.endRefreshing()
     }
     
     func showMapView() {
