@@ -5,6 +5,8 @@ enum LoginError: Error, LocalizedError {
     case networkError(Error)
     case invalidResponse
     case unexpectedError
+    case emailNotVerified
+    case accountInactive
 
     var errorDescription: String? {
         switch self {
@@ -16,6 +18,10 @@ enum LoginError: Error, LocalizedError {
             return "Invalid response from the server. Please try again."
         case .unexpectedError:
             return "An unexpected error occurred. Please try again."
+        case .emailNotVerified:
+            return "Please verify your email before logging in."
+        case .accountInactive:
+            return "Your account has been deactivated. Please contact support."
         }
     }
 }
@@ -30,7 +36,10 @@ class LoginViewModel {
     // MARK: - Login
     
     func login(email: String, password: String, completion: @escaping (Result<Void, LoginError>) -> Void) {
-        networkProvider.login(email: email, password: password) { result in
+        // Normalize email
+        let normalizedEmail = email.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        networkProvider.login(email: normalizedEmail, password: password) { result in
             switch result {
             case .success(let tokenJSON):
                 // Parse the token JSON
@@ -51,6 +60,10 @@ class LoginViewModel {
                     switch networkError {
                     case .requestFailed(statusCode: 401):
                         completion(.failure(.invalidCredentials))
+                    case .requestFailed(statusCode: 403):
+                        // Check if it's email not verified or account inactive
+                        // You might need to parse the error response to determine this
+                        completion(.failure(.emailNotVerified))
                     default:
                         completion(.failure(.networkError(error)))
                     }
@@ -71,8 +84,9 @@ class LoginViewModel {
     // MARK: - Email Validation
     
     func isValidEmail(_ email: String) -> Bool {
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
         let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         let emailPred = NSPredicate(format:"SELF MATCHES %@", emailRegEx)
-        return emailPred.evaluate(with: email)
+        return emailPred.evaluate(with: trimmedEmail)
     }
 }
