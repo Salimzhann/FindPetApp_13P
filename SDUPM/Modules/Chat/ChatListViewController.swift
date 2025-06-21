@@ -77,7 +77,9 @@ class ChatListViewController: UIViewController, ChatListViewProtocol {
     // MARK: - Setup
     
     private func setupUI() {
-        title = "Чаты"
+        title = "Chats"
+        navigationController?.navigationBar.prefersLargeTitles = false
+        navigationItem.largeTitleDisplayMode = .never
         view.backgroundColor = .systemBackground
         
         view.addSubview(tableView)

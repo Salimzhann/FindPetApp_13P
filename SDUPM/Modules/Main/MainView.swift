@@ -117,8 +117,8 @@ class MainView: UIViewController, MainViewProtocol {
     
     private func setupUI() {
         navigationItem.title = "Pets"
-        navigationItem.largeTitleDisplayMode = .always
-        navigationController?.navigationBar.prefersLargeTitles = true
+        navigationController?.navigationBar.prefersLargeTitles = false
+        navigationItem.largeTitleDisplayMode = .never
         
         view.backgroundColor = .systemBackground
         

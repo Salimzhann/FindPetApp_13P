@@ -164,6 +164,8 @@ class MyPetViewController: UIViewController, IMyPetViewController {
     private func setupViews() {
         view.backgroundColor = .systemBackground
         title = "My Pets"
+        navigationController?.navigationBar.prefersLargeTitles = false
+        navigationItem.largeTitleDisplayMode = .never
         
         // Добавляем сегментированный контрол
         view.addSubview(segmentedControl)

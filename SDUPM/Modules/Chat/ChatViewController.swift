@@ -134,6 +134,8 @@ class ChatViewController: UIViewController {
         return label
     }()
     
+    private var temporaryMessageIds: [String: Int] = [:]
+    
     // MARK: - Initialization
     
     init(chat: Chat, showPetInfo: Bool = true) {
@@ -157,12 +159,7 @@ class ChatViewController: UIViewController {
         setupActions()
         setupKeyboardObservers()
         
-        if let userId = UserDefaults.standard.object(forKey: "current_user_id") as? Int {
-            currentUserId = userId
-        } else {
-            currentUserId = chat.user1_id
-        }
-        
+        currentUserId = UserDefaults.standard.integer(forKey: LoginViewModel.userIdIdentifier)
         presenter.view = self
         
         setupNavigation()
@@ -735,45 +732,70 @@ extension ChatViewController: ChatViewProtocol {
     }
     
     func addMessage(_ message: ChatMessage) {
-        print("addMessage called with ID: \(message.id), content: \(message.content), sender: \(message.sender_id), current: \(currentUserId)")
-        
-        // Проверяем, является ли это дубликатом существующего сообщения
-        if messages.contains(where: { $0.id == message.id && message.id > 0 }) {
-            print("Ignoring duplicate message with ID: \(message.id)")
-            return
-        }
-        
-        // Проверяем наличие дубликата по содержимому
-        if messages.contains(where: { $0.content == message.content && $0.id != message.id }) {
-            print("Ignoring message with duplicate content: \(message.content)")
-            return
-        }
-        
-        // Если это сообщение от текущего пользователя, убедимся, что sender_id установлен правильно
-        var updatedMessage = message
-        if message.id < 0 || (message.content.count > 0 && messages.contains(where: {
-            $0.id < 0 && $0.content == message.content
-        })) {
-            // Для временных сообщений или серверных сообщений, заменяющих временные,
-            // устанавливаем sender_id как currentUserId
-            updatedMessage.sender_id = currentUserId
-        }
-        
-        // Добавляем сообщение в массив
-        messages.append(updatedMessage)
-        
-        DispatchQueue.main.async {
-            self.tableView.beginUpdates()
-            self.tableView.insertRows(at: [IndexPath(row: self.messages.count - 1, section: 0)], with: .automatic)
-            self.tableView.endUpdates()
-            self.scrollToBottom()
-            
-            // Отмечаем входящие сообщения как прочитанные
-            if !message.is_read && message.sender_id != self.currentUserId {
-                self.presenter.markMessageAsRead(messageId: message.id)
-            }
-        }
-    }
+           print("🔵 addMessage called:")
+           print("  - ID: \(message.id)")
+           print("  - Content: \(message.content)")
+           print("  - Sender: \(message.sender_id)")
+           print("  - Current User: \(currentUserId)")
+           print("  - Created at: \(message.created_at)")
+           
+           // Если это сообщение от текущего пользователя с положительным ID (от сервера)
+           if message.sender_id == currentUserId && message.id > 0 {
+               // Проверяем, есть ли временное сообщение с таким содержимым
+               if let tempId = temporaryMessageIds[message.content] {
+                   print("🟡 Found temporary message for content: \(message.content)")
+                   
+                   // Ищем временное сообщение по ID
+                   if let tempIndex = messages.firstIndex(where: { $0.id == tempId }) {
+                       print("🟢 Replacing temporary message at index: \(tempIndex)")
+                       
+                       // Заменяем временное сообщение на постоянное
+                       messages[tempIndex] = message
+                       
+                       // Удаляем из словаря временных сообщений
+                       temporaryMessageIds.removeValue(forKey: message.content)
+                       
+                       DispatchQueue.main.async {
+                           self.tableView.reloadRows(at: [IndexPath(row: tempIndex, section: 0)], with: .none)
+                       }
+                       return
+                   }
+               }
+           }
+           
+           // Проверяем на дубликаты по ID
+           if message.id > 0 && messages.contains(where: { $0.id == message.id }) {
+               print("🔴 Duplicate message with ID \(message.id), skipping")
+               return
+           }
+           
+           // Если это временное сообщение от текущего пользователя
+           if message.id < 0 && message.sender_id == currentUserId {
+               print("🟣 Registering temporary message")
+               temporaryMessageIds[message.content] = message.id
+               
+               // Удаляем запись через 30 секунд
+               DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in
+                   self?.temporaryMessageIds.removeValue(forKey: message.content)
+               }
+           }
+           
+           // Добавляем сообщение
+           print("🟢 Adding new message to array")
+           messages.append(message)
+           
+           DispatchQueue.main.async {
+               self.tableView.beginUpdates()
+               self.tableView.insertRows(at: [IndexPath(row: self.messages.count - 1, section: 0)], with: .automatic)
+               self.tableView.endUpdates()
+               self.scrollToBottom()
+               
+               // Отмечаем входящие сообщения как прочитанные
+               if !message.is_read && message.sender_id != self.currentUserId {
+                   self.presenter.markMessageAsRead(messageId: message.id)
+               }
+           }
+       }
     
     
     func showTypingIndicator(_ isTyping: Bool) {

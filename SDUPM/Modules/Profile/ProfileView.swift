@@ -128,6 +128,9 @@ class ProfileView: UIViewController, ProfileViewProtocol, EditProfileDelegate {
     
     private func setupUI() {
         title = "Profile"
+        navigationController?.navigationBar.prefersLargeTitles = false
+        navigationItem.largeTitleDisplayMode = .never
+        
         view.backgroundColor = .systemBackground
         
         // Setup navigation bar with edit button

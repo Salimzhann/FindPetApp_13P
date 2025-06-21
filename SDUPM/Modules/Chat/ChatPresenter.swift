@@ -22,11 +22,10 @@ class ChatPresenter {
     private var isConnecting = false
     private var reconnectTimer: Timer?
     private let reconnectInterval: TimeInterval = 5.0
+    private var currentChat: Chat?
     
-    // Добавляем свойство для хранения неотправленных сообщений
     private var pendingMessages: [String] = []
     
-    // Добавляем флаг для отслеживания активности веб-сокета
     private var isWebSocketActive = false
     
     init(chatId: Int) {
@@ -49,6 +48,7 @@ class ChatPresenter {
                 
                 switch result {
                 case .success(let chat):
+                    self.currentChat = chat
                     self.view?.updateChatInfo(chat)
                 case .failure(let error):
                     self.view?.showError(message: error.localizedDescription)
@@ -77,26 +77,33 @@ class ChatPresenter {
     }
     
     func sendMessage(content: String) {
-        // Создаем временное сообщение для немедленного отображения в UI
-        let currentUserId = UserDefaults.standard.integer(forKey: "current_user_id")
+        let currentUserId = UserDefaults.standard.integer(forKey: LoginViewModel.userIdIdentifier)
+        print("Current user ID: \(currentUserId)")
+        
+        guard let chat = currentChat else {
+            print("Error: currentChat is nil")
+            return
+        }
+        
+        let otherUserId = chat.user1_id == currentUserId ? chat.user2_id : chat.user1_id
+        print("Other user ID: \(otherUserId)")
+        
         let currentTime = ISO8601DateFormatter().string(from: Date())
         
         let tempMessage = ChatMessage(
-            id: Int.random(in: -10000..<0), // Временный отрицательный ID для предотвращения конфликтов
+            id: Int.random(in: -10000..<0),
             content: content,
             chat_id: chatId,
             sender_id: currentUserId,
-            whoid: currentUserId, // Для исходящих сообщений sender_id и whoid одинаковы
+            whoid: otherUserId,
             is_read: false,
             created_at: currentTime
         )
         
-        // Добавляем сообщение в UI немедленно
         DispatchQueue.main.async {
             self.view?.addMessage(tempMessage)
         }
         
-        // Отправляем сообщение через WebSocket как раньше
         let messageData: [String: Any] = [
             "message_type": "text",
             "content": content
@@ -110,10 +117,7 @@ class ChatPresenter {
         sendWebSocketMessage(jsonString)
     }
     
-    // MARK: - WebSocket
-    
     func connectToWebSocket() {
-        // Предотвращаем повторные попытки подключения
         guard !isConnected && !isConnecting else { return }
         
         isConnecting = true
@@ -148,7 +152,6 @@ class ChatPresenter {
         
         print("Connecting to WebSocket URL: \(url.absoluteString)")
         
-        // Создаем сессию с расширенными настройками
         let session = URLSession(configuration: .default)
         webSocketTask = session.webSocketTask(with: url)
         
@@ -158,10 +161,8 @@ class ChatPresenter {
         isConnecting = false
         isWebSocketActive = true
         
-        // Начинаем получать сообщения
         receiveMessage()
         
-        // Отправляем все накопившиеся сообщения
         let messagesToSend = pendingMessages
         pendingMessages = []
         
@@ -171,12 +172,10 @@ class ChatPresenter {
             }
         }
         
-        // Отправляем ping для поддержания соединения
         startPinging()
     }
     
     private func startPinging() {
-        // Отправка ping каждые 30 секунд для поддержания соединения
         DispatchQueue.global().asyncAfter(deadline: .now() + 30) { [weak self] in
             guard let self = self, self.isConnected, self.isWebSocketActive else { return }
             
@@ -188,7 +187,6 @@ class ChatPresenter {
                         self.scheduleReconnect()
                     }
                 } else {
-                    // Ping успешен, продолжаем пинговать
                     self.startPinging()
                 }
             }
@@ -216,23 +214,19 @@ class ChatPresenter {
     
     private func receiveMessage() {
         guard isConnected, let task = webSocketTask, isWebSocketActive else {
-            // Если сокет не активен, не пытаемся получать сообщения
             return
         }
         
         print("Waiting for WebSocket messages...")
         
-        // Запрос на получение сообщения
         task.receive { [weak self] result in
             guard let self = self, self.isWebSocketActive else { return }
             
             switch result {
             case .success(let message):
-                // Обрабатываем полученное сообщение
                 switch message {
                 case .string(let text):
                     print("Received WebSocket message: \(text)")
-                    // Обрабатываем текстовое сообщение
                     self.handleWebSocketMessage(text)
                 case .data(let data):
                     if let text = String(data: data, encoding: .utf8) {
@@ -243,18 +237,15 @@ class ChatPresenter {
                     break
                 }
                 
-                // Сразу запрашиваем следующее сообщение
                 self.receiveMessage()
                 
             case .failure(let error):
                 print("WebSocket error: \(error.localizedDescription)")
                 
-                // Обработка ошибки WebSocket
                 DispatchQueue.main.async {
                     if self.isConnected {
                         self.isConnected = false
                         
-                        // Только уведомляем пользователя в случае критической ошибки
                         if (error as NSError).code != URLError.cancelled.rawValue {
                             self.view?.showError(message: "Connection to chat interrupted. Reconnecting...")
                             self.scheduleReconnect()
@@ -269,12 +260,10 @@ class ChatPresenter {
         guard let data = text.data(using: .utf8) else { return }
         
         do {
-            // Выводим полученное сообщение для отладки
             print("Processing WebSocket message: \(text)")
             
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 
-                // Check if this is a chat message
                 if let content = json["content"] as? String,
                    let messageId = (json["message_id"] as? Int) ?? (json["id"] as? Int),
                    let chatId = json["chat_id"] as? Int,
@@ -285,7 +274,7 @@ class ChatPresenter {
                     let isRead = (json["is_read"] as? Bool) ?? false
                     let id = messageId
                     
-                    print("Parsed message: id=\(id), content=\(content), sender=\(senderId)")
+                    print("Parsed message: id=\(id), content=\(content), sender=\(senderId), whoid=\(whoid)")
                     
                     let message = ChatMessage(
                         id: id,
@@ -297,7 +286,6 @@ class ChatPresenter {
                         created_at: createdAt
                     )
                     
-                    // Всегда отправляем сообщение в основной поток для обновления UI
                     DispatchQueue.main.async {
                         print("Sending message to UI: \(message.id) - \(message.content)")
                         self.view?.addMessage(message)
@@ -305,7 +293,6 @@ class ChatPresenter {
                     return
                 }
                 
-                // Handle typing status
                 if let statusType = json["status_type"] as? String,
                    let userId = json["user_id"] as? Int {
                     
@@ -356,7 +343,6 @@ class ChatPresenter {
                     return
                 }
                 
-                // System message
                 if let message = json["message"] as? String,
                    let type = json["type"] as? String,
                    type == "system" {
@@ -364,7 +350,6 @@ class ChatPresenter {
                     return
                 }
                 
-                // Если не удалось распознать формат сообщения, проверяем наличие ключевых полей для сообщения чата
                 if json["content"] != nil || json["message"] != nil {
                     print("Trying alternative message format parsing...")
                     let content = (json["content"] as? String) ?? (json["message"] as? String) ?? ""
@@ -372,11 +357,9 @@ class ChatPresenter {
                     let chatId = (json["chat_id"] as? Int) ?? self.chatId
                     let senderId = (json["sender_id"] as? Int) ?? (json["user_id"] as? Int) ?? 0
                     
-                    // Получаем текущий ID пользователя
-                    let currentUserId = UserDefaults.standard.integer(forKey: "current_user_id")
-                    let whoid = senderId
+                    let currentUserId = UserDefaults.standard.integer(forKey: LoginViewModel.userIdIdentifier)
+                    let whoid = (json["whoid"] as? Int) ?? (senderId == currentUserId ? 0 : currentUserId)
                     
-                    // Используем текущее время в качестве запасного варианта
                     let dateFormatter = DateFormatter()
                     dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
                     let createdAt = (json["created_at"] as? String) ?? dateFormatter.string(from: Date())
@@ -401,14 +384,11 @@ class ChatPresenter {
         } catch {
             print("Failed to parse WebSocket message: \(error)")
             
-            // Попытка обработать сообщение как простой текст
             if text.contains("\"content\"") || text.contains("\"message\"") {
                 print("Attempting to process as plain text message...")
                 
-                // Получаем текущий ID пользователя
-                let currentUserId = UserDefaults.standard.integer(forKey: "current_user_id")
+                let currentUserId = UserDefaults.standard.integer(forKey: LoginViewModel.userIdIdentifier)
                 
-                // Создаем временное сообщение с минимальной информацией
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
                 
@@ -416,8 +396,8 @@ class ChatPresenter {
                     id: Int.random(in: 10000...99999),
                     content: "Новое сообщение получено. Пожалуйста, обновите чат.",
                     chat_id: self.chatId,
-                    sender_id: 0, // Неизвестный отправитель
-                    whoid: 0,
+                    sender_id: 0,
+                    whoid: currentUserId,
                     is_read: false,
                     created_at: dateFormatter.string(from: Date())
                 )
@@ -432,10 +412,8 @@ class ChatPresenter {
     
     private func sendWebSocketMessage(_ text: String) {
         guard isConnected, let task = webSocketTask, isWebSocketActive else {
-            // Если не подключены, добавляем сообщение в очередь и подключаемся
             pendingMessages.append(text)
             
-            // Пытаемся подключиться, если еще не подключаемся
             if !isConnecting {
                 connectToWebSocket()
             }
@@ -449,7 +427,7 @@ class ChatPresenter {
                 DispatchQueue.main.async {
                     if let self = self, self.isConnected {
                         self.isConnected = false
-                        self.pendingMessages.append(text) // Сохраняем сообщение для повторной отправки
+                        self.pendingMessages.append(text)
                         self.scheduleReconnect()
                     }
                 }

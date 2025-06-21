@@ -102,6 +102,8 @@ class FindPetViewController: UIViewController, UIImagePickerControllerDelegate, 
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
         title = "Find a Pet"
+        navigationController?.navigationBar.prefersLargeTitles = false
+        navigationItem.largeTitleDisplayMode = .never
         
         setupViews()
         setupActions()

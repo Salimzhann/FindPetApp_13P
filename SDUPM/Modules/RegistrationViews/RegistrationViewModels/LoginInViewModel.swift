@@ -28,26 +28,22 @@ enum LoginError: Error, LocalizedError {
 
 class LoginViewModel {
     
-    // Сохраняем важный идентификатор для токена
     static let tokenIdentifier: String = "TokenIdentifier"
+    static let userIdIdentifier: String = "UserIdIdentifier"
     
     private let networkProvider = NetworkServiceProvider()
     
-    // MARK: - Login
-    
     func login(email: String, password: String, completion: @escaping (Result<Void, LoginError>) -> Void) {
-        // Normalize email
         let normalizedEmail = email.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         
         networkProvider.login(email: normalizedEmail, password: password) { result in
             switch result {
             case .success(let tokenJSON):
-                // Parse the token JSON
                 if let data = tokenJSON.data(using: .utf8),
                    let loginResponse = try? JSONDecoder().decode(LoginResponse.self, from: data) {
                     
-                    // Save the token
                     UserDefaults.standard.set(loginResponse.accessToken, forKey: LoginViewModel.tokenIdentifier)
+                    UserDefaults.standard.set(loginResponse.userId, forKey: LoginViewModel.userIdIdentifier)
                     UserDefaults.standard.set(true, forKey: LoginView.isActive)
                     
                     completion(.success(()))
@@ -61,8 +57,6 @@ class LoginViewModel {
                     case .requestFailed(statusCode: 401):
                         completion(.failure(.invalidCredentials))
                     case .requestFailed(statusCode: 403):
-                        // Check if it's email not verified or account inactive
-                        // You might need to parse the error response to determine this
                         completion(.failure(.emailNotVerified))
                     default:
                         completion(.failure(.networkError(error)))
@@ -74,14 +68,9 @@ class LoginViewModel {
         }
     }
     
-    // MARK: - Password Validation
-    
     func isValidPassword(_ password: String) -> Bool {
-        // Password should be at least 8 characters
         return password.count >= 8
     }
-    
-    // MARK: - Email Validation
     
     func isValidEmail(_ email: String) -> Bool {
         let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)

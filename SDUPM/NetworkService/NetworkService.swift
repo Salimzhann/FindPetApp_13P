@@ -1,7 +1,7 @@
 import Foundation
 import UIKit
 import CoreLocation
-/// Ошибки, которые могут возникнуть при сетевых запросах
+
 enum NetworkError: Error, LocalizedError {
     case invalidURL
     case requestFailed(statusCode: Int)
@@ -34,27 +34,23 @@ enum NetworkError: Error, LocalizedError {
     }
 }
 
-/// Базовая структура для хранения API-endpoint
 struct NetworkService {
     static let api: String = "https://lost-found-for-pets-production.up.railway.app"
 }
 
-/// Основной класс для работы с сетевыми запросами
 class NetworkServiceProvider {
-    
-    // MARK: - Properties
     
     let api: String = NetworkService.api
     private let sessionTimeout: TimeInterval = 30.0
     
-    // MARK: - Helper Methods
-    
-    /// Получение токена авторизации из UserDefaults
     private func getToken() -> String? {
         return UserDefaults.standard.string(forKey: LoginViewModel.tokenIdentifier)
     }
     
-    /// Создание общего URL запроса с авторизацией
+    private func getUserId() -> Int? {
+        return UserDefaults.standard.object(forKey: LoginViewModel.userIdIdentifier) as? Int
+    }
+    
     private func createAuthorizedRequest(url: URL, method: String) -> URLRequest {
         var request = URLRequest(url: url)
         request.httpMethod = method
@@ -67,7 +63,6 @@ class NetworkServiceProvider {
         return request
     }
     
-    /// Обработка сетевой ошибки
     private func handleNetworkError<T>(_ error: Error, completion: @escaping (Result<T, Error>) -> Void) {
         DispatchQueue.main.async {
             if (error as NSError).domain == NSURLErrorDomain {
@@ -85,7 +80,6 @@ class NetworkServiceProvider {
         }
     }
     
-    /// Обработка HTTP ответа
     private func handleHTTPResponse<T>(response: URLResponse?, statusCode: Int? = nil, completion: @escaping (Result<T, Error>) -> Void) -> Bool {
         guard let httpResponse = response as? HTTPURLResponse else {
             DispatchQueue.main.async {
@@ -122,9 +116,6 @@ class NetworkServiceProvider {
         }
     }
     
-    // MARK: - Search Pet API Requests
-    
-    /// Поиск домашнего животного по фотографии и критериям
     func searchPet(photo: UIImage, species: String, color: String, gender: String?, breed: String?, completion: @escaping (Result<PetSearchResponse, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/pets/search") else {
             DispatchQueue.main.async {
@@ -133,7 +124,6 @@ class NetworkServiceProvider {
             return
         }
         
-        // Создаем multipart/form-data запрос
         var request = createAuthorizedRequest(url: url, method: "POST")
         
         let boundary = "Boundary-\(UUID().uuidString)"
@@ -141,7 +131,6 @@ class NetworkServiceProvider {
         
         var body = Data()
         
-        // Добавляем фото
         if let imageData = photo.jpegData(compressionQuality: 0.7) {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
@@ -150,7 +139,6 @@ class NetworkServiceProvider {
             body.append("\r\n".data(using: .utf8)!)
         }
         
-        // Добавляем обязательные поля
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"species\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(species)\r\n".data(using: .utf8)!)
@@ -159,7 +147,6 @@ class NetworkServiceProvider {
         body.append("Content-Disposition: form-data; name=\"color\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(color)\r\n".data(using: .utf8)!)
         
-        // Добавляем опциональные поля
         if let gender = gender, !gender.isEmpty {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"gender\"\r\n\r\n".data(using: .utf8)!)
@@ -172,24 +159,20 @@ class NetworkServiceProvider {
             body.append("\(breed)\r\n".data(using: .utf8)!)
         }
         
-        // Закрываем multipart форму
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         
         request.httpBody = body
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            // Обработка сетевой ошибки
             if let error = error {
                 self.handleNetworkError(error, completion: completion)
                 return
             }
             
-            // Обработка HTTP ответа
             if !self.handleHTTPResponse(response: response, completion: completion) {
                 return
             }
             
-            // Проверка наличия данных
             guard let data = data else {
                 DispatchQueue.main.async {
                     completion(.failure(NetworkError.noData))
@@ -197,7 +180,6 @@ class NetworkServiceProvider {
                 return
             }
             
-            // Декодирование ответа
             do {
                 let searchResponse = try JSONDecoder().decode(PetSearchResponse.self, from: data)
                 DispatchQueue.main.async {
@@ -217,9 +199,6 @@ class NetworkServiceProvider {
         task.resume()
     }
     
-    // MARK: - User Profile
-    
-    /// Получение информации о профиле пользователя
     func fetchUserProfile(completion: @escaping (UserProfile?) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/users/me") else {
             DispatchQueue.main.async {
@@ -270,7 +249,6 @@ class NetworkServiceProvider {
         task.resume()
     }
     
-    /// Обновление информации о профиле пользователя
     func updateUserProfile(fullName: String, phone: String, password: String?, completion: @escaping (Bool, String?) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/users/me") else {
             DispatchQueue.main.async {
@@ -329,7 +307,6 @@ class NetworkServiceProvider {
         }
     }
     
-    /// Удаление учетной записи пользователя
     func deleteUserAccount(completion: @escaping (Bool, String?) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/users/me") else {
             DispatchQueue.main.async {
@@ -369,9 +346,6 @@ class NetworkServiceProvider {
         task.resume()
     }
     
-    // MARK: - My Pets API Requests
-    
-    /// Получение списка питомцев пользователя
     func fetchUserPets(completion: @escaping ([MyPetResponse]?) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/pets/my") else {
             DispatchQueue.main.async {
@@ -414,9 +388,6 @@ class NetworkServiceProvider {
         task.resume()
     }
     
-    // MARK: - Create Pet
-    
-    /// Создание нового питомца
     func createPet(name: String, species: String, breed: String?, age: Int?, color: String?, gender: String?, distinctiveFeatures: String?, photos: [UIImage], completion: @escaping (Result<MyPetResponse, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/pets") else {
             DispatchQueue.main.async {
@@ -432,7 +403,6 @@ class NetworkServiceProvider {
         
         var body = Data()
         
-        // Добавляем обязательные поля
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"name\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(name)\r\n".data(using: .utf8)!)
@@ -441,7 +411,6 @@ class NetworkServiceProvider {
         body.append("Content-Disposition: form-data; name=\"species\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(species)\r\n".data(using: .utf8)!)
         
-        // Добавляем опциональные поля
         if let age = age {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"age\"\r\n\r\n".data(using: .utf8)!)
@@ -472,7 +441,6 @@ class NetworkServiceProvider {
             body.append("\(distinctiveFeatures)\r\n".data(using: .utf8)!)
         }
         
-        // Добавляем фотографии
         for (index, image) in photos.enumerated() {
             if let imageData = image.jpegData(compressionQuality: 0.7) {
                 body.append("--\(boundary)\r\n".data(using: .utf8)!)
@@ -483,7 +451,6 @@ class NetworkServiceProvider {
             }
         }
         
-        // Закрываем multipart форму
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         
         request.httpBody = body
@@ -533,7 +500,6 @@ class NetworkServiceProvider {
         task.resume()
     }
     
-    // MARK: - Fetch Lost Pets
     func fetchLostPets(page: Int = 1, limit: Int = 10, completion: @escaping (Result<APILostPetResponse, Error>) -> Void) {
         var urlComponents = URLComponents(string: "\(api)/api/v1/pets/lost")!
         urlComponents.queryItems = [
@@ -568,10 +534,8 @@ class NetworkServiceProvider {
             }
             
             do {
-                // First try decoding as a standard array of Pet objects
                 let pets = try JSONDecoder().decode([Pet].self, from: data)
                 
-                // Convert Pet objects to APILostPet objects
                 let apiPets = pets.map { pet -> APILostPet in
                     let photoUrl = pet.photos.first?.photo_url
                     
@@ -586,7 +550,6 @@ class NetworkServiceProvider {
                     )
                 }
                 
-                // Create a response object with the converted pets and pagination info
                 let response = APILostPetResponse(
                     items: apiPets,
                     total: pets.count,
@@ -602,7 +565,6 @@ class NetworkServiceProvider {
             } catch {
                 print("Decoding error: \(error)")
                 
-                // If you want to see the raw JSON for debugging
                 if let jsonString = String(data: data, encoding: .utf8) {
                     print("Response data: \(jsonString)")
                 }
@@ -638,7 +600,6 @@ class NetworkServiceProvider {
         var request = createAuthorizedRequest(url: url, method: "PATCH")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Строим тело запроса только с предоставленными полями
         var body: [String: Any] = [:]
         
         if let name = name { body["name"] = name }
@@ -764,7 +725,7 @@ class NetworkServiceProvider {
         
         task.resume()
     }
-    /// Функция для обратной совместимости - получает потерянных питомцев и преобразует их для презентера
+    
     func fetchLostPets(completion: @escaping (Result<LostPetResponse, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/pets/lost") else {
             DispatchQueue.main.async {
@@ -805,11 +766,9 @@ class NetworkServiceProvider {
             }
             
             do {
-                // Декодируем массив объектов Pet напрямую, так как API возвращает массив
                 let decoder = JSONDecoder()
                 let pets = try decoder.decode([Pet].self, from: data)
                 
-                // Создаем LostPetResponse из полученного массива
                 let response = LostPetResponse(
                     items: pets,
                     total: pets.count
@@ -821,7 +780,6 @@ class NetworkServiceProvider {
             } catch {
                 print("Decoding error: \(error)")
                 
-                // Для отладки выводим часть полученных данных
                 if let jsonString = String(data: data, encoding: .utf8) {
                     let preview = String(jsonString.prefix(200)) + "..."
                     print("Response data preview: \(preview)")
@@ -884,13 +842,7 @@ class NetworkServiceProvider {
         
         task.resume()
     }
-    // MARK: - Authentication API Methods
     
-    /// Вход в систему
-    // Обновите метод login в NetworkServiceProvider так, чтобы он возвращал данные в нужном формате:
-    // SDUPM/NetworkService/NetworkService.swift (Partial update - only the searchPet method)
-    // Path: SDUPM/NetworkService/NetworkService.swift (Add or update this method)
-
     func reportFoundPet(
         photo: UIImage,
         species: String,
@@ -907,7 +859,6 @@ class NetworkServiceProvider {
             return
         }
         
-        // Create multipart/form-data request
         var request = createAuthorizedRequest(url: url, method: "POST")
         
         let boundary = "Boundary-\(UUID().uuidString)"
@@ -915,7 +866,6 @@ class NetworkServiceProvider {
         
         var body = Data()
         
-        // Add photo
         if let imageData = photo.jpegData(compressionQuality: 0.7) {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
@@ -924,7 +874,6 @@ class NetworkServiceProvider {
             body.append("\r\n".data(using: .utf8)!)
         }
         
-        // Add required fields
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"species\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(species)\r\n".data(using: .utf8)!)
@@ -937,7 +886,6 @@ class NetworkServiceProvider {
         body.append("Content-Disposition: form-data; name=\"status\"\r\n\r\n".data(using: .utf8)!)
         body.append("found\r\n".data(using: .utf8)!)
         
-        // Add optional fields
         if let gender = gender, !gender.isEmpty {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"gender\"\r\n\r\n".data(using: .utf8)!)
@@ -950,7 +898,6 @@ class NetworkServiceProvider {
             body.append("\(breed)\r\n".data(using: .utf8)!)
         }
         
-        // Add coordinates if available
         if let coordinates = coordinates {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"coordX\"\r\n\r\n".data(using: .utf8)!)
@@ -961,7 +908,6 @@ class NetworkServiceProvider {
             body.append("\(coordinates.latitude)\r\n".data(using: .utf8)!)
         }
         
-        // Close the multipart form
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         
         request.httpBody = body
@@ -1044,7 +990,6 @@ class NetworkServiceProvider {
                } catch {
                    print("Decoding error: \(error)")
                    
-                   // Вывод полученных данных для отладки
                    if let jsonString = String(data: data, encoding: .utf8) {
                        print("Response data: \(jsonString)")
                    }
@@ -1066,7 +1011,6 @@ class NetworkServiceProvider {
             return
         }
         
-        // Create multipart/form-data request
         var request = createAuthorizedRequest(url: url, method: "POST")
         
         let boundary = "Boundary-\(UUID().uuidString)"
@@ -1074,7 +1018,6 @@ class NetworkServiceProvider {
         
         var body = Data()
         
-        // Add photo
         if let imageData = photo.jpegData(compressionQuality: 0.7) {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
@@ -1083,7 +1026,6 @@ class NetworkServiceProvider {
             body.append("\r\n".data(using: .utf8)!)
         }
         
-        // Add required fields
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"species\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(species)\r\n".data(using: .utf8)!)
@@ -1092,7 +1034,6 @@ class NetworkServiceProvider {
         body.append("Content-Disposition: form-data; name=\"color\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(color)\r\n".data(using: .utf8)!)
         
-        // Add optional fields
         if let gender = gender, !gender.isEmpty {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"gender\"\r\n\r\n".data(using: .utf8)!)
@@ -1105,7 +1046,6 @@ class NetworkServiceProvider {
             body.append("\(breed)\r\n".data(using: .utf8)!)
         }
         
-        // Add coordinates if available
         if let coordinates = coordinates {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"coordX\"\r\n\r\n".data(using: .utf8)!)
@@ -1116,24 +1056,20 @@ class NetworkServiceProvider {
             body.append("\(coordinates.latitude)\r\n".data(using: .utf8)!)
         }
         
-        // Close the multipart form
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         
         request.httpBody = body
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            // Handle network error
             if let error = error {
                 self.handleNetworkError(error, completion: completion)
                 return
             }
             
-            // Handle HTTP response
             if !self.handleHTTPResponse(response: response, completion: completion) {
                 return
             }
             
-            // Check for data
             guard let data = data else {
                 DispatchQueue.main.async {
                     completion(.failure(NetworkError.noData))
@@ -1141,7 +1077,6 @@ class NetworkServiceProvider {
                 return
             }
             
-            // Decode response
             do {
                 let searchResponse = try JSONDecoder().decode(PetSearchResponse.self, from: data)
                 DispatchQueue.main.async {
@@ -1160,7 +1095,7 @@ class NetworkServiceProvider {
         
         task.resume()
     }
-    /// Вход в систему
+    
     func login(email: String, password: String, completion: @escaping (Result<String, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/auth/login") else {
             DispatchQueue.main.async {
@@ -1206,7 +1141,6 @@ class NetworkServiceProvider {
             }
             
             do {
-                // Преобразуем данные в строку JSON для дальнейшей обработки в LoginInViewModel
                 if let jsonString = String(data: data, encoding: .utf8) {
                     DispatchQueue.main.async {
                         completion(.success(jsonString))
@@ -1226,7 +1160,6 @@ class NetworkServiceProvider {
         task.resume()
     }
     
-    /// Регистрация нового пользователя
     func register(fullName: String, email: String, phone: String, password: String, completion: @escaping (Result<String, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/auth/register") else {
             DispatchQueue.main.async {
@@ -1294,7 +1227,6 @@ class NetworkServiceProvider {
         task.resume()
     }
     
-    /// Подтверждение email по коду верификации
     func verifyEmail(email: String, code: String, completion: @escaping (Result<String, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/auth/verify") else {
             DispatchQueue.main.async {
@@ -1359,7 +1291,6 @@ class NetworkServiceProvider {
         
         task.resume()
     }
-    // Путь: SDUPM/NetworkService/NetworkService.swift (добавить эти методы в класс NetworkServiceProvider)
     
     func fetchChats(completion: @escaping (Result<[Chat], Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/chats") else {
@@ -1401,17 +1332,14 @@ class NetworkServiceProvider {
             }
             
             do {
-                // Вывод полученных данных для отладки
                 if let jsonString = String(data: data, encoding: .utf8) {
                     print("Received chat data: \(jsonString)")
                 }
                 
                 let decoder = JSONDecoder()
                 
-                // Пробуем декодировать как массив
                 var chats = try decoder.decode([Chat].self, from: data)
                 
-                // Заполняем UI-данные для каждого чата
                 for i in 0..<chats.count {
                     chats[i].other_user_name = chats[i].other_user_name
                     chats[i].pet_name = chats[i].pet_name
@@ -1423,7 +1351,6 @@ class NetworkServiceProvider {
             } catch {
                 print("❌ Decoding error: \(error)")
                 
-                // Более детальная информация об ошибке
                 if let decodingError = error as? DecodingError {
                     switch decodingError {
                     case .keyNotFound(let key, let context):
@@ -1498,11 +1425,9 @@ class NetworkServiceProvider {
                 }
                 
                 do {
-                    // Используем кастомный декодер, который обрабатывает отсутствующие поля
                     let decoder = JSONDecoder()
                     var chat = try decoder.decode(Chat.self, from: data)
                     
-                    // Добавляем информативные имена для отображения
                     chat.other_user_name = "User \(chat.user2_id)"
                     chat.pet_name = "Pet \(chat.pet_id)"
                     
@@ -1536,7 +1461,6 @@ class NetworkServiceProvider {
         let request = createAuthorizedRequest(url: url, method: "GET")
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            // Обработка ошибок...
             
             guard let data = data else {
                 DispatchQueue.main.async {
@@ -1546,7 +1470,6 @@ class NetworkServiceProvider {
             }
             
             do {
-                // Если ваш бэкенд возвращает массив сообщений, а не объект с полем messages
                 let messages = try JSONDecoder().decode([ChatMessage].self, from: data)
                 DispatchQueue.main.async {
                     completion(.success(messages))
@@ -1554,7 +1477,6 @@ class NetworkServiceProvider {
             } catch {
                 print("Decoding error: \(error)")
                 
-                // Для отладки выведем фактические данные, полученные от сервера
                 if let jsonString = String(data: data, encoding: .utf8) {
                     print("Raw JSON response: \(jsonString)")
                 }
@@ -1567,7 +1489,6 @@ class NetworkServiceProvider {
         
         task.resume()
     }
-    // Добавьте этот метод в класс NetworkServiceProvider в файле SDUPM/NetworkService/NetworkService.swift
     
     func getChat(chatId: Int, completion: @escaping (Result<Chat, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/chats/\(chatId)") else {
@@ -1609,7 +1530,6 @@ class NetworkServiceProvider {
             }
             
             do {
-                // Для отладки выводим полученный JSON
                 if let jsonString = String(data: data, encoding: .utf8) {
                     print("Chat API response: \(jsonString)")
                 }
@@ -1617,8 +1537,8 @@ class NetworkServiceProvider {
                 let decoder = JSONDecoder()
                 var chat = try decoder.decode(Chat.self, from: data)
                 
-                // Заполняем UI-данные
-                let otherUserName = "User \(chat.user1_id == UserDefaults.standard.integer(forKey: "current_user_id") ? chat.user2_id : chat.user1_id)"
+                let currentUserId = self.getUserId() ?? 0
+                let otherUserName = "User \(chat.user1_id == currentUserId ? chat.user2_id : chat.user1_id)"
                 chat.other_user_name = otherUserName
                 chat.pet_name = "Pet \(chat.pet_id)"
                 
@@ -1628,7 +1548,6 @@ class NetworkServiceProvider {
             } catch {
                 print("Decoding error: \(error)")
                 
-                // Более подробная информация об ошибке для отладки
                 if let decodingError = error as? DecodingError {
                     switch decodingError {
                     case .keyNotFound(let key, let context):
@@ -1718,19 +1637,6 @@ class NetworkServiceProvider {
         }
     }
     
-    // Обновление метода searchPet в NetworkServiceProvider для включения координат
-    // Этот код нужно добавить в класс NetworkServiceProvider в файле NetworkService.swift
-
-    // MARK: - Search Pet API Requests
-
-    /// Поиск домашнего животного по фотографии и критериям
-    // Обновление метода searchPet в NetworkServiceProvider для включения координат
-    // Этот код нужно добавить в класс NetworkServiceProvider в файле NetworkService.swift
-
-    // MARK: - Search Pet API Requests
-    // Путь: SDUPM/NetworkService/NetworkService.swift
-
-    // Обновленный метод searchPet для поддержки сохранения и передачи координат
     func searchPet(
         photo: UIImage,
         species: String,
@@ -1749,7 +1655,6 @@ class NetworkServiceProvider {
             return
         }
         
-        // Создаем multipart/form-data запрос
         var request = createAuthorizedRequest(url: url, method: "POST")
         
         let boundary = "Boundary-\(UUID().uuidString)"
@@ -1757,7 +1662,6 @@ class NetworkServiceProvider {
         
         var body = Data()
         
-        // Добавляем фото
         if let imageData = photo.jpegData(compressionQuality: 0.7) {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"photo\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
@@ -1766,7 +1670,6 @@ class NetworkServiceProvider {
             body.append("\r\n".data(using: .utf8)!)
         }
         
-        // Добавляем обязательные поля
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"species\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(species)\r\n".data(using: .utf8)!)
@@ -1775,7 +1678,6 @@ class NetworkServiceProvider {
         body.append("Content-Disposition: form-data; name=\"color\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(color)\r\n".data(using: .utf8)!)
         
-        // Добавляем опциональные поля
         if let gender = gender, !gender.isEmpty {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"gender\"\r\n\r\n".data(using: .utf8)!)
@@ -1788,7 +1690,6 @@ class NetworkServiceProvider {
             body.append("\(breed)\r\n".data(using: .utf8)!)
         }
         
-        // Добавляем координаты, если они предоставлены
         if let coordX = coordX {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"coordX\"\r\n\r\n".data(using: .utf8)!)
@@ -1801,18 +1702,15 @@ class NetworkServiceProvider {
             body.append("\(coordY)\r\n".data(using: .utf8)!)
         }
         
-        // Добавляем параметр save для сохранения в базу данных
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"save\"\r\n\r\n".data(using: .utf8)!)
         body.append("\(save)\r\n".data(using: .utf8)!)
         
-        // Закрываем multipart форму
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         
         request.httpBody = body
         
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            // Обработка сетевой ошибки
             if let error = error {
                 DispatchQueue.main.async {
                     completion(.failure(NetworkError.unknownError(error)))
@@ -1820,7 +1718,6 @@ class NetworkServiceProvider {
                 return
             }
             
-            // Обработка HTTP ответа
             guard let httpResponse = response as? HTTPURLResponse else {
                 DispatchQueue.main.async {
                     completion(.failure(NetworkError.requestFailed(statusCode: 0)))
@@ -1837,7 +1734,6 @@ class NetworkServiceProvider {
                 return
             }
             
-            // Проверка наличия данных
             guard let data = data else {
                 DispatchQueue.main.async {
                     completion(.failure(NetworkError.noData))
@@ -1845,12 +1741,10 @@ class NetworkServiceProvider {
                 return
             }
             
-            // Вывод ответа для отладки
             if let jsonString = String(data: data, encoding: .utf8) {
                 print("Response data: \(jsonString)")
             }
             
-            // Декодирование ответа
             do {
                 let searchResponse = try JSONDecoder().decode(PetSearchResponse.self, from: data)
                 DispatchQueue.main.async {
@@ -1881,7 +1775,6 @@ class NetworkServiceProvider {
         var request = createAuthorizedRequest(url: url, method: "POST")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Create request body with message
         let messageData = ["message": message]
         
         do {
@@ -1918,14 +1811,12 @@ class NetworkServiceProvider {
                 }
                 
                 do {
-                    // For debugging
                     if let jsonString = String(data: data, encoding: .utf8) {
                         print("Response from create chat with message: \(jsonString)")
                     }
                     
                     if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                        let chatId = json["chat_id"] as? Int {
-                        // Fetch the complete chat details for the newly created chat
                         self.getChat(chatId: chatId) { chatResult in
                             DispatchQueue.main.async {
                                 completion(chatResult)
@@ -1950,8 +1841,7 @@ class NetworkServiceProvider {
             }
         }
     }
-    // Add this method to the NetworkServiceProvider class in NetworkService.swift
-
+    
     func deleteChat(chatId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/chats/\(chatId)") else {
             DispatchQueue.main.async {
@@ -1990,7 +1880,7 @@ class NetworkServiceProvider {
         
         task.resume()
     }
-    // MARK: - Delete Pet
+    
     func deletePet(petId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
         guard let url = URL(string: "\(api)/api/v1/pets/\(petId)") else {
             DispatchQueue.main.async {
